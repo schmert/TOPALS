@@ -3,8 +3,8 @@ title: "Fitting a TOPALS mortality model by Newton-Raphson"
 author: "Carl Schmertmann"
 date: "28 Feb 2018"
 output:
-  pdf_document: default
   html_document: default
+  pdf_document: default
 ---
 
 ```{r setup, include=FALSE}
@@ -180,6 +180,7 @@ D = rpois(100, N*mu)
 plot( age, D, type='h', main='Simulated Deaths by Age')
 
 plot(age, log(D/N), pch=1, ylim=c(-10,0), main='Simulated log D/N')
+rug(age[D==0], lwd=2)
 ```
 
 For this data we can estimate TOPALS parameters for offsets $\alpha$ from a specified standard.  We'll arbitrarily use the US 2015 female schedule as a standard.
