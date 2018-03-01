@@ -1,0 +1,228 @@
+#------------------------------------------------------------
+# TOPALS fitting function
+#
+# Carl Schmertmann
+#   created 01 Mar 2018
+#   edited  01 Mar 2018
+#
+# Fits TOPALS parameters to single-year (D,N) data by
+# Newton-Raphson iteration with analytical derivatives
+#
+# A more complete explanation is in 
+# https://github.com/schmert/TOPALS/blob/master/TOPALS_fitting.pdf
+#------------------------------------------------------------
+
+rm(list=ls())
+graphics.off()
+if (.Platform$OS.type == 'windows') windows(record=TRUE)
+
+library(splines)
+
+
+
+#==== THIS IS THE MAIN FUNCTION ====
+
+
+TOPALS_fit = function( N, D, std,
+                       max_age        = 99,
+                       knot_positions = c(0,1,10,20,40,70), 
+                       smoothing_k    = 1,
+                       max_iter       = 20,
+                       alpha_tol      = .00005,
+                       details        = FALSE) {
+
+    ## single years of age from 0 to max_age
+    age = 0:max_age
+    
+    ## B is an Ax7 matrix. Each column is a linear B-spline basis function
+    B      = splines::bs( age, knots=knot_positions, degree=1 )
+    nalpha = ncol(B) 
+    
+    ## penalized log lik function
+    Q = function(alpha) {
+      lambda.hat = as.numeric( std + B %*% alpha)
+      penalty    = smoothing_k * sum(diff(alpha)^2)
+      return( sum(D * lambda.hat - N * exp(lambda.hat)) - penalty)
+    }
+    
+    ## expected deaths function
+    Dhat = function(alpha) {
+      lambda.hat = std + B %*% alpha
+      return(  as.numeric( N * exp(lambda.hat) ))
+    }      
+    
+    ## S matrix for penalty
+    S = matrix(0,nalpha-1,nalpha) 
+    diag(S[, 1:(nalpha-1)]) = -1
+    diag(S[, 2:(nalpha)  ]) = +1
+    SS = crossprod(S)
+    
+    #------------------------------------------------
+    # iteration function: 
+    # next alpha vector as a function of current alpha
+    #------------------------------------------------
+    next_alpha = function(alpha) {
+      dhat = Dhat(alpha)
+      M = solve ( t(B) %*% diag(dhat) %*% B + 2*smoothing_k *SS)
+      v = t(B) %*% (D - dhat) - 2* (smoothing_k * (SS %*% alpha))
+      return( alpha + M %*% v)
+    }
+    
+    ## main iteration:     
+    a = rep(0, nalpha)
+    
+    niter = 0
+    repeat {
+      niter      = niter + 1
+      last_param = a
+      a          = next_alpha( a )  # update
+      change     = a - last_param
+
+      converge = all( abs(change) < alpha_tol)
+      overrun  = (niter == max_iter)
+      
+      if (converge | overrun) { break }
+      
+    } # repeat
+    
+    if (details) {
+      return( list( alpha    = a, 
+                    converge = converge, 
+                    maxiter  = overrun))
+    } else return( a) 
+    
+} # TOPALS_fit
+
+
+#==== END MAIN FUNCTION ====
+
+
+
+
+
+#-----------------------------------------------------
+# EXAMPLES: SMALL POPULATIONS WITH RANDOM DEATHS
+#-----------------------------------------------------
+
+age = 0:99
+
+## Population by Age (5000 females, age structure similar to Estonia 2010)
+N = c(62, 62, 50, 65, 56, 56, 40, 50, 43, 50, 
+      42, 39, 34, 43, 45, 42, 53, 42, 45, 72, 
+      66, 65, 63, 67, 64, 78, 65, 69, 65, 60, 
+      70, 57, 46, 64, 58, 62, 59, 69, 69, 76, 
+      69, 56, 58, 61, 50, 52, 79, 65, 75, 78, 
+      73, 62, 76, 63, 83, 63, 61, 77, 84, 67, 
+      72, 62, 60, 60, 50, 55, 37, 48, 75, 51, 
+      59, 66, 71, 45, 46, 45, 44, 58, 50, 40, 
+      34, 42, 27, 35, 25, 25, 25, 18, 16,  5, 
+      2,  7,  2,  0,  5,  1,  1,  0,  1,  0)
+
+## true mortality rates (Estonia 2010 from HMD)
+mu = c(0.00246, 0.00064, 0.00026, 0.00014, 0.00014, 
+       0.00059, 0.00031, 0.00016,       0,       0, 
+       0.00034,       0, 0.00018,       0, 0.00016, 
+       0.00047, 0.00015, 0.00013,       0, 0.00023, 
+       0.00021,   2e-04,   1e-04, 0.00021, 0.00053, 
+       0.00073, 0.00021, 0.00085, 0.00033, 0.00033, 
+       0.00045, 0.00079, 0.00034, 0.00045, 0.00077, 
+       0.00066, 0.00077, 0.00099, 0.00074, 0.00096, 
+       0.00127, 0.00099, 0.00103,   7e-04, 0.00220, 
+       0.00177, 0.00263, 0.00247, 0.00171, 0.00189, 
+       0.00408, 0.00297, 0.00326, 0.00285, 0.00402, 
+       0.00441, 0.00584, 0.00485, 0.00475, 0.00484, 
+       0.00740, 0.00782, 0.00777, 0.01002, 0.01080, 
+       0.01277, 0.01026, 0.01350, 0.01316, 0.01467, 
+       0.01353, 0.01839, 0.02011, 0.02176, 0.02507, 
+       0.02801, 0.03008, 0.03849, 0.04071, 0.05160, 
+       0.05487, 0.06088, 0.06675, 0.07599, 0.08657, 
+       0.09597, 0.12556, 0.11733, 0.14262, 0.16010, 
+       0.17928, 0.20020, 0.22290, 0.24739, 0.27361, 
+       0.30150, 0.33094, 0.36176, 0.39377, 0.42671)
+
+## A reasonable standard schedule of log mortality rates: USA females 2015 from HMD
+this.std = c(-5.2232, -7.9576, -8.3774, -8.7403, -8.948, 
+             -9.1150, -9.0280, -9.2103, -9.2103, -9.4335, 
+             -9.4335, -9.2103, -9.1150, -8.8049, -8.6797, 
+             -8.6226, -8.3349, -8.1807, -7.9294, -7.8240, 
+             -7.7994, -7.6843, -7.6843, -7.6417, -7.5811, 
+             -7.4876, -7.4876, -7.4021, -7.3540, -7.2934,
+             -7.2089, -7.1691, -7.0586, -7.0243, -6.9911, 
+             -6.9486, -6.8308, -6.8124, -6.7338, -6.7338,
+             -6.6377, -6.5362, -6.4440, -6.3830, -6.2818, 
+             -6.2047, -6.1193, -6.0407, -5.9257, -5.8500, 
+             -5.7477, -5.6636, -5.5649, -5.4846, -5.4194, 
+             -5.3475, -5.2572, -5.1832, -5.1127, -5.0625, 
+             -5.0071, -4.9281, -4.8422, -4.7689, -4.7094, 
+             -4.6356, -4.5497, -4.4542, -4.3788, -4.2723, 
+             -4.1819, -4.0757, -3.9660, -3.8859, -3.8126, 
+             -3.6977, -3.6071, -3.4917, -3.4016, -3.2834, 
+             -3.1696, -3.0791, -2.9481, -2.8382, -2.7308, 
+             -2.6140, -2.5092, -2.3710, -2.2583, -2.1670, 
+             -2.0485, -1.935,  -1.8211, -1.6996, -1.6052, 
+             -1.5011, -1.4032, -1.3082, -1.2165, -1.1282)
+
+# trapez approx of life expectancy from a logmx schedule over ages 0..99
+e0 = function(logmx) {
+  mx = exp(logmx)
+  px = exp(-mx)
+  lx = c(1,cumprod(px))
+  return( sum(head(lx,-1) + tail(lx,-1)) / 2)
+}
+
+
+set.seed(6447100)   # change this if you want a different random dataset
+
+## Draw random samples of deaths D ~ Poisson(N*mu). Fit and display TOPALS model.
+
+nsim = 10 
+
+B  = bs( 0:99, knots=c(0,1,10,20,40,70), degree=1 )
+
+true_e0 = round( e0(log(mu)), 2)
+
+for (i in 1:nsim) {
+    D = rpois(100, N*mu)   # random deaths
+  
+    fitted_alpha = TOPALS_fit( N, D, this.std)
+
+    fitted_logmx = this.std + B %*% fitted_alpha
+    
+    this.e0    = e0(fitted_logmx)
+    this.title = paste0('Sample # ',i, ' of ',nsim,': TOPALS\nfitted e0= ', round(this.e0,2),
+                        ' true e0= ', true_e0) 
+    
+    plot( age, log(D/N), ylim=c(-10,0), pch='+', cex=1.2, main=this.title)
+    rug( age[D==0], lwd=2)
+    lines(age, this.std, type='l', lty=2, col='grey', lwd=3)
+    lines(age, fitted_logmx, lty=1, col='red', lwd=3)
+
+}
+
+
+## With a very high smoothing_k,  TOPALS = indirect standardization = 
+##  up and down shifts of standard schedule
+
+nsim = 10 
+
+B  = bs( 0:99, knots=c(0,1,10,20,40,70), degree=1 )
+
+true_e0 = round( e0(log(mu)), 2)
+
+for (i in 1:nsim) {
+  D = rpois(100, N*mu)   # random deaths
+  
+  fitted_alpha = TOPALS_fit( N, D, this.std, smoothing_k = 10000)  #<<<<<<
+  
+  fitted_logmx = this.std + B %*% fitted_alpha
+  
+  this.e0    = e0(fitted_logmx)
+  this.title = paste0('Sample # ',i, ' of ',nsim,': TOPALS with high smoothing_k\nfitted e0= ', round(this.e0,2),
+                      ' true e0= ', true_e0) 
+  
+  plot( age, log(D/N), ylim=c(-10,0), pch='+', cex=1.2, main=this.title)
+  rug( age[D==0], lwd=2)
+  lines(age, this.std, type='l', lty=2, col='grey', lwd=3)
+  lines(age, fitted_logmx, lty=1, col='blue', lwd=3)
+  
+}
