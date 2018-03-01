@@ -171,6 +171,11 @@ e0 = function(logmx) {
 }
 
 
+
+#-----------------------------------------------------
+# EXAMPLE 1: TOPALS Defaults
+#-----------------------------------------------------
+
 set.seed(6447100)   # change this if you want a different random dataset
 
 ## Draw random samples of deaths D ~ Poisson(N*mu). Fit and display TOPALS model.
@@ -200,8 +205,11 @@ for (i in 1:nsim) {
 }
 
 
-## With a very high smoothing_k,  TOPALS = indirect standardization = 
-##  up and down shifts of standard schedule
+#-----------------------------------------------------
+# EXAMPLE 2: Very high penalty, in which case
+# TOPALS = indirect standardization 
+#        = up and down shifts of standard schedule
+#-----------------------------------------------------
 
 nsim = 10 
 
@@ -226,3 +234,37 @@ for (i in 1:nsim) {
   lines(age, fitted_logmx, lty=1, col='blue', lwd=3)
   
 }
+
+
+#-----------------------------------------------------
+# EXAMPLE 3: applying TOPALS_fit to a large number of 
+#  datasets in one command
+#-----------------------------------------------------
+
+npop = 1000   # number of populations
+
+# each col of D is a sample of deaths over ages 0..99
+D = matrix( rpois( npop*100, N*mu), nrow=100)   
+
+# estimate TOPALS parameters for all npop populations in one command
+# on a std desktop PC (circa 2014) this takes <1 sec for 1000 fits
+system.time ({a = sapply( 1:ncol(D), function(i) TOPALS_fit(N, D[,i], std=this.std))})
+
+L = this.std + B %*% a   # 100 x npop matrix of fitted logmx schedules
+
+Lquant = t( apply(L, 1, quantile, c(.10,.50,.90)) )  # 100 x 3
+
+matplot(age, Lquant, type='l', lty=c(2,1,2), lwd=c(2,4,2), col=c('red','black','red'),
+        main=paste('10,50,90%iles of logmx\nacross',npop,'samples'))
+
+esim = apply(L, 2, e0)
+plot(density(esim), main=paste('Density of e0\nacross',npop,'samples'),
+     lwd=3, bty='l', adjust=1.5)
+equant = quantile(esim, c(.10,.50,.90))
+segments( equant['10%'], 0, equant['90%'], 0, lwd=2)
+points( equant['50%'], 0, pch=16, cex=1.2)
+abline(v= true_e0, lty=2)
+
+
+
+
