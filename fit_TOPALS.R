@@ -258,8 +258,8 @@ matplot(age, Lquant, type='l', lty=c(2,1,2), lwd=c(2,4,2), col=c('red','black','
         main=paste('10,50,90%iles of logmx\nacross',npop,'samples'))
 
 esim = apply(L, 2, e0)
-plot(density(esim), main=paste('Density of e0\nacross',npop,'samples'),
-     lwd=3, bty='l', adjust=1.5)
+plot(density(esim, adjust=1.5), main=paste('Density of e0\nacross',npop,'samples'),
+     lwd=3, bty='l')
 equant = quantile(esim, c(.10,.50,.90))
 segments( equant['10%'], 0, equant['90%'], 0, lwd=2)
 points( equant['50%'], 0, pch=16, cex=1.2)
