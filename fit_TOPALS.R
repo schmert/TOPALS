@@ -3,7 +3,7 @@
 #
 # Carl Schmertmann
 #   created 01 Mar 2018
-#   edited  01 Mar 2018
+#   edited  02 Mar 2018
 #
 # Fits TOPALS parameters to single-year (D,N) data by
 # Newton-Raphson iteration with analytical derivatives
@@ -41,7 +41,7 @@ TOPALS_fit = function( N, D, std,
     ## penalized log lik function
     Q = function(alpha) {
       lambda.hat = as.numeric( std + B %*% alpha)
-      penalty    = smoothing_k * sum(diff(alpha)^2)
+      penalty    = smoothing_k * sum( diff(alpha)^2 )
       return( sum(D * lambda.hat - N * exp(lambda.hat)) - penalty)
     }
     
@@ -85,8 +85,11 @@ TOPALS_fit = function( N, D, std,
       
     } # repeat
     
-    if (details) {
+    if (details | !converge | overrun) {
+      if (!converge) print('did not converge')
+      if (overrun) print('exceeded maximum number of iterations')
       return( list( alpha    = a, 
+                    Qvalue   = Q(a),
                     converge = converge, 
                     maxiter  = overrun))
     } else return( a) 
@@ -254,9 +257,14 @@ L = this.std + B %*% a   # 100 x npop matrix of fitted logmx schedules
 
 Lquant = t( apply(L, 1, quantile, c(.10,.50,.90)) )  # 100 x 3
 
-matplot(age, Lquant, type='l', lty=c(2,1,2), lwd=c(2,4,2), col=c('red','black','red'),
-        main=paste('10,50,90%iles of logmx\nacross',npop,'samples'))
+plot(age, Lquant[,'50%'], type='n', ylim=c(-10,0),
+     xlab='age',ylab='logmx',
+     main=paste('10,50,90%iles of logmx\nacross',npop,'samples'))
+segments(age, Lquant[,'10%'], age, Lquant[,'90%'], col='darkgrey' )     
+points(age, Lquant[,'50%'], pch=16, cex=.80)
 
+
+## estimated life expectancies across samples
 esim = apply(L, 2, e0)
 plot(density(esim, adjust=1.5), main=paste('Density of e0\nacross',npop,'samples'),
      lwd=3, bty='l')
@@ -264,6 +272,68 @@ equant = quantile(esim, c(.10,.50,.90))
 segments( equant['10%'], 0, equant['90%'], 0, lwd=2)
 points( equant['50%'], 0, pch=16, cex=1.2)
 abline(v= true_e0, lty=2)
+
+
+
+## compare to optim() approach, which seems to take about 20-30 times longer
+## and be slightly less accurate
+
+# control params for nonlinear fitting
+this.control = list(maxit=1000,fnscale= -1, parscale=rep(.01,ncol(B)))
+
+alpha0 = rep(0, 7)  # initial offsets (all 0 means start at standard schedule)
+
+Q = function(alpha,N,D,std, smoothing_k=1) {
+  lambda.hat = as.numeric( std + B %*% alpha)
+  penalty    = smoothing_k * sum( diff(alpha)^2 )
+  return( sum(D * lambda.hat - N * exp(lambda.hat)) - penalty)
+}
+
+system.time( {
+  a.optim = 
+      sapply(1:ncol(D), function(j) {
+      optim( alpha0, Q,
+             D=D[,j], N=N,
+             std=this.std,
+             method='BFGS', control=this.control)$par }) }
+)
+
+#--- compare maximized Q values
+
+Q.optim = sapply(1:ncol(D),  function(j)  Q(a.optim[,j], N=N,D=D[,j],std=this.std) )
+Q.NR    = sapply(1:ncol(D),  function(j)  Q(a[,j],       N=N,D=D[,j],std=this.std) )
+
+plot(Q.optim, Q.NR)
+abline(0,1,col=2)
+
+plot( sort( Q.NR - Q.optim), seq(Q.NR)/length(Q.NR), type='s',
+      xlab='Change in Objective',ylab='',
+      main='Improvement with Newton-Raphson\nCumul Dist of Q.NR-Q.optim')
+
+#--- compare estimated life expectancies
+
+L.optim = this.std + B %*% a.optim  
+
+esim.optim = apply(L.optim, 2, e0)
+
+plot(esim.optim, esim, ylab='Newton-Raphson', xlab='optim( )',
+     main='e0 estimates across 1000 samples')
+abline(0,1,col=2)
+abline(h=true_e0, v=true_e0, lty=2)
+
+# a few examples
+
+sel = sample(ncol(D), 5)
+for (j in sel) {
+  plot( age, log(D[,j]/N), pch='+', cex=1.2, main=paste('Sample #',j),
+        ylim=c(-10,.10), ylab='logmx')
+  lines(age, L[,j], col='purple', lwd=2)
+  lines(age, L.optim[,j], col='red', lwd=2, lty=2)
+  segments(age,0, age, L[,j]-L.optim[,j], col='purple')
+  abline(h=0)
+  legend( 65,-5, c('Newton-R','optim( )'), lwd=2,lty=c(1,2), 
+          col=c('purple','red'), bty='n', cex=.80)
+}
 
 
 
