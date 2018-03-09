@@ -2,14 +2,18 @@ data {
     int A;                         // number of single-year ages
     int R;                         // number of regions
     int K;                         // number of TOPALS offsets per schedule
-    
-    int nlev;                     // number of levels in spatial hierarchy (should be 3)
-    
-    int neff[nlev];               // number of effects by level (16,115,314)
 
     matrix[A,K] B;                 // spline basis fns for TOPALS
-
-    matrix[R,R-1] S;              // spatial basis fns (S %*% {iid N(0,1)}) -> CAR effects)
+    
+    int neff[3];                   // number of effects at each hier. level (16,116,314)
+    
+/*-------------------------
+spatial effects matrices 
+based on regional hierarchy
+--------------------------*/
+    matrix[R,  neff[1]-1 ] S1;
+    matrix[R,  neff[2]-1 ] S2;
+    matrix[R,  neff[3]-1 ] S3;    
 
     matrix[A,2] lambda_star;       // standard schedules: A x 2 (male,female)
 
@@ -28,11 +32,14 @@ In R, the input array in both cases is 2 x A x R
 }
 
 parameters {
-  matrix[K,R-1] eps[2];   // deep spatial params: 2-array of (R-1) x K matrices
-  vector[K]     mu[2];    // global means for alphas, by component and sex: 2-array of 1xK vectors
+  matrix[K,neff[1]-1] eps1[2];   // deep spatial params: 2-array of K x (neff1-1)
+  matrix[K,neff[2]-1] eps2[2];   // deep spatial params: 2-array of K x (neff2-1)
+  matrix[K,neff[3]-1] eps3[2];   // deep spatial params: 2-array of K x (neff3-1)
+    
+  vector[K]     mu[2];    // global means for alphas, by comp and sex: 2-array of 1xK vectors
   
-  real<lower=0> sigma_car;  // sd of CAR spatial effects
-  real<lower=0> sigma_sex;  // sd of sex-difference prior 
+  real<lower=0> sigma_hier[3];  // sd of CAR spatial effects
+  real<lower=0> sigma_sex;      // sd of sex-difference prior 
 }
 
 transformed parameters {
@@ -41,7 +48,11 @@ transformed parameters {
   matrix[A,R] log_Dhat[2]; // log expected deaths: 2-array of A x R matrices
   
   for (s in 1:2) {
-    alpha[s]  = rep_matrix(mu[s], R) + sigma_car * eps[s] * S';      // R x K 
+    alpha[s]  = rep_matrix(mu[s], R) 
+                       + sigma_hier[1] * eps1[s] * S1' 
+                       + sigma_hier[2] * eps2[s] * S2' 
+                       + sigma_hier[3] * eps3[s] * S3' ;
+    
     lambda[s] = rep_matrix(lambda_star[,s], R) + B * alpha[s];        // R x A 
     
     log_Dhat[s] = log(N[s]) + lambda[s]; 
