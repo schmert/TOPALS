@@ -3,7 +3,7 @@
 #
 # Carl Schmertmann
 #   created 01 Mar 2018
-#   edited  02 Mar 2018
+#   edited  06 June 2018 (added estimated covariance of alpha params)
 #
 # Fits TOPALS parameters to single-year (D,N) data by
 # Newton-Raphson iteration with analytical derivatives
@@ -88,7 +88,12 @@ TOPALS_fit = function( N, D, std,
     if (details | !converge | overrun) {
       if (!converge) print('did not converge')
       if (overrun) print('exceeded maximum number of iterations')
+      
+      dhat = Dhat(a)
+      covar = solve( t(B) %*% diag(dhat) %*% B + 2*smoothing_k *SS)
+      
       return( list( alpha    = a, 
+                    covar    = covar,
                     Qvalue   = Q(a),
                     converge = converge, 
                     maxiter  = overrun))
