@@ -3,8 +3,8 @@ title: "Fitting a TOPALS mortality model by Newton-Raphson"
 author: "Carl Schmertmann"
 date: "28 Feb 2018"
 output:
-  html_document: default
   pdf_document: default
+  html_document: default
 ---
 
 ```{r setup, include=FALSE}

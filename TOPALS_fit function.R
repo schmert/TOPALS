@@ -3,7 +3,7 @@
 #
 # Carl Schmertmann
 #   created 01 Mar 2018
-#   edited  15 Mar 2019 (added fitted log mort to output)
+#   edited  16 Mar 2019 (added fitted log mort, basis, etc to detailed output)
 #
 # Fits TOPALS parameters to single-year (D,N) data by
 # Newton-Raphson iteration with analytical derivatives
@@ -84,6 +84,10 @@ TOPALS_fit = function( N, D, std,
       covar = solve( t(B) %*% diag(dhat) %*% B + 2*smoothing_k *SS)
       
       return( list( alpha    = a, 
+                    knots    = knot_positions,
+                    std      = std,
+                    B        = B,
+                    offset   = B %*% a,
                     logm     = std + B %*% a,
                     covar    = covar,
                     Qvalue   = Q(a),
