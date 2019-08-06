@@ -70,10 +70,10 @@ rug(age[D==0], side=1, ticksize=.015)
 lines(age, HMD_female_std, lty=1, lwd=3, col='grey')
 points(age, fitted_logmx, cex=.80, pch=16, col='firebrick')
 
-Q10 = fitted_logmx -1.96 * se_logmx
-Q90 = fitted_logmx +1.96 * se_logmx
+L = fitted_logmx - 1.96 * se_logmx
+H = fitted_logmx + 1.96 * se_logmx
 
-segments( age, Q10, age, Q90, col='firebrick', lwd=.60)
+segments( age, L, age, H, col='firebrick', lwd=.60)
 
 #-----------------------------------------
 # uncertainty about alpha offsets 
