@@ -35,11 +35,11 @@ ITA = full_join(N5,D5, by='age') %>%
       filter(age < 100)
 
 ## get an arbitrary standard 
-## for single ages 0..99: Canada Females 2000
+## for single ages 0..99: Canada Females 1959
 
 CAN = readHMDweb('CAN', 'fltper_1x1',
                    password = pw, username=id) %>%
-  filter(Year==2000, Age<100) %>%
+  filter(Year==1959, Age<100) %>%
   select(age=Age,mx=mx) %>%
   mutate(logmx = log(mx))
 
@@ -70,94 +70,56 @@ D = ITA$deaths
 ## first exploratory iterations
 alpha = rep(0,K)
 
-eta = as.vector( exp( std + B %*% alpha))
-mu  = as.vector( W %*% eta)
+next_alpha = function(alpha) {
+  eta = as.vector( exp( std + B %*% alpha))
+  mu  = as.vector( W %*% eta)
+  
+  Dhat = N * mu
+  
+  X = W %*% diag(eta) %*% B
+  A = diag(N/mu)
+  
+  y = (D-Dhat)/N + X %*% alpha
+  
+  updated_alpha = solve( t(X) %*% A %*% X, t(X) %*% A %*% y)
+  return(updated_alpha)
+}
 
-Dhat = N * mu
+maxiter = 10
+a = matrix(NA, K, maxiter)
+a[,1] = alpha
 
-X = W %*% diag(eta) %*% B
-A = diag(N/mu)
+i = 2
+while (i <= maxiter) {
+  a[,i] = next_alpha( a[,i-1])
+  delta_a = a[,i] - a[,i-1]
+  if (all(abs(delta_a) < .00005)) break
+  i = i+1
+}
 
-y = (D-Dhat)/N + X %*% alpha
+alpha_hat = a[,i]
 
-alpha2 = solve( t(X) %*% A %*% X, t(X) %*% A %*% y)
+## plot data
 
-## do it again
+hues = c('red','darkgreen','royalblue','orangered','salmon','lawngreen')
 
-eta = as.vector( exp( std + B %*% alpha2))
-mu  = as.vector( W %*% eta)
+plot( age+.50, rate1$logmx[1:100], pch=16, ylim=c(-10,0))
+lines( age+.50, std, col='grey', lwd=3)
+lines( age+.50, std + B %*% alpha_hat, col=sample(hues,1), lwd=3)
 
-Dhat = N * mu
+for (i in seq(L)) {
+   y = log(D[i]/N[i])
+   H = ifelse(i<length(L), L[i+1], 100)
+   segments(L[i],y,H,y, col='black', lwd=2)
+}
+abline(v=c(L,100),lty=2, col='grey')
 
-X = W %*% diag(eta) %*% B
-A = diag(N/mu)
-
-y = (D-Dhat)/N + X %*% alpha2
-
-alpha3 = solve( t(X) %*% A %*% X, t(X) %*% A %*% y)
-
-## do it again
-
-eta = as.vector( exp( std + B %*% alpha3))
-mu  = as.vector( W %*% eta)
-
-Dhat = N * mu
-
-X = W %*% diag(eta) %*% B
-A = diag(N/mu)
-
-y = (D-Dhat)/N + X %*% alpha3
-
-alpha4 = solve( t(X) %*% A %*% X, t(X) %*% A %*% y)
-
-
-## do it again
-
-eta = as.vector( exp( std + B %*% alpha4))
-mu  = as.vector( W %*% eta)
-
-Dhat = N * mu
-
-X = W %*% diag(eta) %*% B
-A = diag(N/mu)
-
-y = (D-Dhat)/N + X %*% alpha4
-
-alpha5 = solve( t(X) %*% A %*% X, t(X) %*% A %*% y)
-
-## do it again
-
-eta = as.vector( exp( std + B %*% alpha5))
-mu  = as.vector( W %*% eta)
-
-Dhat = N * mu
-
-X = W %*% diag(eta) %*% B
-A = diag(N/mu)
-
-y = (D-Dhat)/N + X %*% alpha5
-
-alpha6 = solve( t(X) %*% A %*% X, t(X) %*% A %*% y)
-
-
-## do it again
-
-eta = as.vector( exp( std + B %*% alpha6))
-mu  = as.vector( W %*% eta)
-
-Dhat = N * mu
-
-X = W %*% diag(eta) %*% B
-A = diag(N/mu)
-
-y = (D-Dhat)/N + X %*% alpha6
-
-alpha7 = solve( t(X) %*% A %*% X, t(X) %*% A %*% y)
 
 
 
 if (FALSE) 
-{TOPALS_fit = function( N, D, std,
+{
+  TOPALS_fit = function( N, D, std,
                        max_age        = 99,
                        knot_positions = c(0,1,10,20,40,70), 
                        smoothing_k    = 1,
