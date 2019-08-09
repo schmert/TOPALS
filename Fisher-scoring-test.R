@@ -73,38 +73,51 @@ D = ITA$deaths
 
 ##==================
 ## sample experiment
+Q = function(alpha) {
+  mu1 = exp( std + B %*% alpha )
+  mu = W %*% mu1
+  logL    = sum( -this_N * mu + this_D * log(mu))
+  penalty = - 1/2 * t(alpha) %*% P %*% alpha
+  return(unlist( list( logL=logL, penalty=penalty, obj_fn = logL + penalty)))
+}
 
-factor = 1
-D = rpois(length(N), N/factor * D/N)
-N = N/factor
+
+factor = 1e-3
+this_N = N * factor
+this_D = rpois(length(this_N), this_N * D/N)
+
 ##==================
 
 ## first exploratory iterations
 alpha = rep(0,K)
 
 D1 = diff( diag(K), diff=1) # first differencing matrix
-P  = 1/2 * crossprod(D1)    # roughness penalty is alpha' [P] alpha
+P  = 2 * crossprod(D1)    # roughness penalty is alpha' [P] alpha
 
 next_alpha = function(alpha) {
   mu1 = as.vector( exp( std + B %*% alpha))   # single-year rates
   mu  = as.vector( W %*% mu1)                 # age group avg rates
   
-  BMW  = t(B) %*% diag(mu1) %*% t(W)
-  Dhat = N * mu 
+  BMW  = t(B) %*% diag(mu1) %*% t(W) %*% diag(1/mu)
+  Dhat = this_N * mu 
   
   # score (gradient of penalized likelihood wrt TOPALS alphas)
-  S = ( BMW %*% diag(1/mu) %*% (D - Dhat) ) - P %*% alpha      
+  S = ( BMW %*% (this_D - Dhat) ) - P %*% alpha      
   
   # expected value of Hessian at current alpha values
-  H = BMW %*% diag(N/mu) %*% t(BMW) + tcrossprod(P %*% alpha)
+  H = +( BMW %*% diag(this_N*mu) %*% t(BMW) + tcrossprod(P %*% alpha) )
   
-  update = -solve(H) %*% S
+  update = solve(H) %*% S
   
-  new_value = alpha - update
+  new_value = alpha + update
+  
+  print(list(params = data.frame(alpha, update, new_value),
+             Qval = data.frame(Q.old=Q(alpha), Q.new=Q(new_value))))
+  
   return(new_value)
 }
 
-maxiter = 20
+maxiter = 100
 a = matrix(NA, K, maxiter)
 a[,1] = alpha
 
@@ -116,111 +129,32 @@ while (i <= maxiter) {
   i = i+1
 }
 
-alpha_hat = a[,i]
+if (i>maxiter) {
+   print('--- DID NOT CONVERGE ---')
+   alpha_hat = a[,maxiter]
+} else {  
+  alpha_hat = a[,i]
+}  
+
 
 ## plot data
 
 hues = c('red','darkgreen','royalblue','orangered','salmon','lawngreen')
 
-plot(  age+.50, rate1$logmx[1:100], pch=16, ylim=c(-10,0))
+plot(  age+.50, rate1$logmx[1:100], pch=16, ylim=c(-10,0),
+       main=paste(sum(this_D),'deaths among', round(sum(this_N)),'women'),
+       sub = ifelse(i>maxiter,'DID NOT CONVERGE','CONVERGED'))
 lines( age+.50, std, col='grey', lwd=3)
-lines( age+.50, std + B %*% alpha_hat, col=sample(hues,1), lwd=3)
+this_color = sample(hues,1)
+lines( age+.50, std + B %*% alpha_hat, col=this_color, lwd=5)
 
 for (i in seq(L)) {
-   y = log(D[i]/N[i])
+   y = log(this_D[i]/this_N[i])
    H = ifelse(i<length(L), L[i+1], 100)
-   segments(L[i],y,H,y, col='black', lwd=2)
+   segments(L[i],y,H,y, col=this_color, lwd=4)
 }
+
 abline(v=c(L,100),lty=2, col='grey')
+text(L, -9, this_D, cex=.80)
+points( knot_positions, rep(-10,length(knot_positions)), pch=15, col=2,cex=1.2)
 
-
-
-
-if (FALSE) 
-{
-  TOPALS_fit = function( N, D, std,
-                       max_age        = 99,
-                       knot_positions = c(0,1,10,20,40,70), 
-                       smoothing_k    = 1,
-                       max_iter       = 20,
-                       alpha_tol      = .00005,
-                       details        = FALSE) {
-
-    require(splines)
-  
-    ## single years of age from 0 to max_age
-    age = 0:max_age
-    
-    ## B is an Ax7 matrix. Each column is a linear B-spline basis function
-    B      = splines::bs( age, knots=knot_positions, degree=1 )
-    nalpha = ncol(B) 
-    
-    ## penalized log lik function
-    Q = function(alpha) {
-      lambda.hat = as.numeric( std + B %*% alpha)
-      penalty    = smoothing_k * sum( diff(alpha)^2 )
-      return( sum(D * lambda.hat - N * exp(lambda.hat)) - penalty)
-    }
-    
-    ## expected deaths function
-    Dhat = function(alpha) {
-      lambda.hat = std + B %*% alpha
-      return(  as.numeric( N * exp(lambda.hat) ))
-    }      
-    
-    ## S matrix for penalty
-    S = matrix(0,nalpha-1,nalpha) 
-    diag(S[, 1:(nalpha-1)]) = -1
-    diag(S[, 2:(nalpha)  ]) = +1
-    SS = crossprod(S)
-    
-    #------------------------------------------------
-    # iteration function: 
-    # next alpha vector as a function of current alpha
-    #------------------------------------------------
-    next_alpha = function(alpha) {
-      dhat = Dhat(alpha)
-      M = solve ( t(B) %*% diag(dhat) %*% B + 2*smoothing_k *SS)
-      v = t(B) %*% (D - dhat) - 2* (smoothing_k * (SS %*% alpha))
-      return( alpha + M %*% v)
-    }
-    
-    ## main iteration:     
-    a = rep(0, nalpha)
-    
-    niter = 0
-    repeat {
-      niter      = niter + 1
-      last_param = a
-      a          = next_alpha( a )  # update
-      change     = a - last_param
-
-      converge = all( abs(change) < alpha_tol)
-      overrun  = (niter == max_iter)
-      
-      if (converge | overrun) { break }
-      
-    } # repeat
-    
-    if (details | !converge | overrun) {
-      if (!converge) print('did not converge')
-      if (overrun) print('exceeded maximum number of iterations')
-      
-      dhat = Dhat(a)
-      covar = solve( t(B) %*% diag(dhat) %*% B + 2*smoothing_k *SS)
-      
-      return( list( alpha    = a, 
-                    knots    = knot_positions,
-                    std      = std,
-                    B        = B,
-                    offset   = B %*% a,
-                    logm     = std + B %*% a,
-                    covar    = covar,
-                    Qvalue   = Q(a),
-                    converge = converge, 
-                    maxiter  = overrun))
-    } else return( a) 
-    
-} # TOPALS_fit
-
-} # if FALSE
