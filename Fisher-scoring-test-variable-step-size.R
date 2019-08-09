@@ -81,8 +81,18 @@ Q = function(alpha) {
   return(unlist( list( logL=logL, penalty=penalty, obj_fn = logL + penalty)))
 }
 
+## sample experiment
+Qval = function(alpha) {
+  mu1 = exp( std + B %*% alpha )
+  mu = W %*% mu1
+  return( sum( -this_N * mu + this_D * log(mu)) - 
+               1/2 * t(alpha) %*% P %*% alpha )
+}
 
-factor = .005
+
+
+
+factor = 1
 this_N = N * factor
 this_D = rpois(length(this_N), this_N * D/N)
 
@@ -108,16 +118,26 @@ next_alpha = function(alpha) {
   H = +( BMW %*% diag(this_N*mu) %*% t(BMW) + tcrossprod(P %*% alpha) )
   
   update = solve(H) %*% S
+
+  ## try several step sizes
+  step_size = 2^(-(0:4))
+  trial_Q   = NA*step_size
+  for (i in seq(step_size)) {
+    trial_Q[i] = Qval( alpha + step_size[i] * update)
+  }
+  ibest = which.min(trial_Q)
+  best_update = update * step_size[ibest]  
+
+  new_value = alpha + best_update
   
-  new_value = alpha + update
-  
-  print(list(params = data.frame(alpha, update, new_value),
-             Qval = data.frame(Q.old=Q(alpha), Q.new=Q(new_value))))
+  print(list(stepsize=step_size[ibest],
+             params = data.frame(alpha, best_update, new_value),
+             Qval   = data.frame(Q.old=Q(alpha), Q.new=Q(new_value))))
   
   return(new_value)
 }
 
-maxiter = 100
+maxiter = 200
 a = matrix(NA, K, maxiter)
 a[,1] = alpha
 
