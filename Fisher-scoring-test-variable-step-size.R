@@ -92,7 +92,7 @@ Qval = function(alpha) {
 
 
 
-factor = 1
+factor = .00005
 this_N = N * factor
 this_D = rpois(length(this_N), this_N * D/N)
 
@@ -120,19 +120,23 @@ next_alpha = function(alpha) {
   update = solve(H) %*% S
 
   ## try several step sizes
-  step_size = 2^(-(0:4))
+  step_size = 2^( -9:+2)
   trial_Q   = NA*step_size
   for (i in seq(step_size)) {
     trial_Q[i] = Qval( alpha + step_size[i] * update)
   }
-  ibest = which.min(trial_Q)
+  ibest = which.max(trial_Q)
   best_update = update * step_size[ibest]  
 
   new_value = alpha + best_update
-  
-  print(list(stepsize=step_size[ibest],
-             params = data.frame(alpha, best_update, new_value),
-             Qval   = data.frame(Q.old=Q(alpha), Q.new=Q(new_value))))
+
+   print(list(stepsize=step_size[ibest],
+              params = data.frame(alpha, best_update, new_value),
+              Qval   = data.frame(Q.old=Q(alpha), Q.new=Q(new_value))))
+
+  print( unlist(list(old=Qval(alpha), new=Qval(new_value),
+              change = Qval(new_value)-Qval(alpha),
+              rel.change = 1-Qval(new_value)/Qval(alpha))))
   
   return(new_value)
 }
@@ -144,8 +148,9 @@ a[,1] = alpha
 i = 2
 while (i <= maxiter) {
   a[,i] = next_alpha( a[,i-1])
-  delta_a = a[,i] - a[,i-1]
-  if (all(abs(delta_a) < .00005)) break
+  delta_a        = a[,i] - a[,i-1]
+  rel_change_obj = 1 - Qval(a[,i])/Qval(a[,i-1]) 
+  if ( (all(abs(delta_a) < .00005)) | (( rel_change_obj > 0) & (rel_change_obj < 1e-6)) ) break
   i = i+1
 }
 
