@@ -5,6 +5,11 @@ date: "11 Aug 2019"
 output:
   pdf_document: default
   html_document: default
+header-includes: 
+  - \usepackage{setspace}
+  - \onehalfspacing
+fontsize: 12pt
+indent: TRUE
 ---
 
 ```{r setup, include=FALSE}
@@ -154,12 +159,12 @@ The derivative of expected deaths in group $g$ with respect to TOPALS parameters
 \label{eq:dg-dalpha}
 \frac{\partial \hat{D}_g}{\partial \boldsymbol{\alpha}} 
 = N_g \: \frac{\partial M_g}{\partial \boldsymbol{\alpha}} 
-= N_g \: \frac{\partial}{\partial \boldsymbol{\alpha}}\left[ \boldsymbol{\mu}^\prime w_g\right]  
-= N_g \: \frac{\partial \boldsymbol{\mu}^\prime}{\partial \boldsymbol{\alpha}} w_g 
-= N_g \: \boldsymbol{B}^\prime \,diag(\boldsymbol{\mu})\, w_g 
+= N_g \: \frac{\partial}{\partial \boldsymbol{\alpha}}\left[ \boldsymbol{\mu}^\prime \boldsymbol{w}_g\right]  
+= N_g \: \frac{\partial \boldsymbol{\mu}^\prime}{\partial \boldsymbol{\alpha}} \boldsymbol{w}_g 
+= N_g \: \boldsymbol{B}^\prime \,diag(\boldsymbol{\mu})\, \boldsymbol{w}_g 
 \end{equation}
 
-where $w_g$ is the $g$th row of $\boldsymbol{W}$, an $A \times 1$ vector of weights for group $g$. Assembling into $G$ columns produces a $K \times G$ matrix that summarizes how predicted deaths change with TOPALS offsets:
+where $\boldsymbol{w}_g^\prime$ is the $g$th row of $\boldsymbol{W}$, an $A \times 1$ vector of weights for group $g$. Assembling into $G$ columns produces a $K \times G$ matrix that summarizes how predicted deaths change with TOPALS offsets:
 \begin{equation}
 \label{eq:big-dg-dalpha}
 \frac{\partial \hat{\boldsymbol{D}}^\prime}{\partial \boldsymbol{\alpha}}
@@ -172,9 +177,9 @@ where $w_g$ is the $g$th row of $\boldsymbol{W}$, an $A \times 1$ vector of weig
 =
 \boldsymbol{B}^\prime \,diag(\boldsymbol{\mu})
 \begin{pmatrix}
-N_1\,w_1
+N_1\,\boldsymbol{w}_1
 \cdots
-N_G\,w_G
+N_G\,\boldsymbol{w}_G
 \end{pmatrix}
 =
 \boldsymbol{B}^\prime \,diag(\boldsymbol{\mu}) \:
@@ -220,8 +225,8 @@ $$
   \frac{\partial Q}{\partial\boldsymbol{\alpha}} &= \sum_{g=1}^{G}\left(  D_g \frac{1}{M_g}   \frac{\partial M_g}{\partial\boldsymbol{\alpha}}\: -\:  
 \frac{\partial \hat{D_g}}{\partial\boldsymbol{\alpha}} \right)
 - \boldsymbol{P}\boldsymbol{\alpha} \\
-&= \sum_{g=1}^{G}\left(   \frac{D_g}{M_g}   \boldsymbol{B}^\prime \,diag(\boldsymbol{\mu})\:w_g\: -\:  
-N_g \: \boldsymbol{B}^\prime \,diag(\boldsymbol{\mu})\, w_g \right)
+&= \sum_{g=1}^{G}\left(   \frac{D_g}{M_g}   \boldsymbol{B}^\prime \,diag(\boldsymbol{\mu})\:\boldsymbol{w}_g\: -\:  
+N_g \: \boldsymbol{B}^\prime \,diag(\boldsymbol{\mu})\, \boldsymbol{w}_g \right)
 - \boldsymbol{P}\boldsymbol{\alpha} \\
 &=  \boldsymbol{X}^\prime \:\ diag(\frac{\boldsymbol{D}_{obs}}{\boldsymbol{M}} - \boldsymbol{N})
 - \boldsymbol{P}\boldsymbol{\alpha} \\
@@ -242,7 +247,7 @@ where $\boldsymbol{D}_{obs}$ and $\boldsymbol{\hat{D}}$ are $G \times 1$ vectors
 \end{equation}
 
 
-Rearranging Eq. (\ref{eq:dQ-dalpha}) and placing hats over most of the  $\boldsymbol{\alpha}$-dependent terms yields a system of $K$ equations in $K$ variables $\boldsymbol{\alpha}$
+Rearranging Eq. (\ref{eq:dQ-dalpha}) and placing hats over the  $\boldsymbol{\alpha}$-dependent terms yields a system of $K$ equations in $K$ variables $\boldsymbol{\alpha}$
 
 \begin{equation}
 \label{eq:max-conditions}
@@ -304,8 +309,8 @@ Eq. (\ref{eq:final-IRLS}) is analogous to a (penalized) weighted least squares r
 Age groups for this exercise are 0, 1--4, 5--9,...,80--85.  
 
 ```{r}
-library(tidyverse)
-library(splines)
+library(tidyverse, quietly = TRUE)
+library(splines, quietly = TRUE)
 
 ## Italian female 1980 HMD data for age groups
 
@@ -319,10 +324,6 @@ N = c(312106.85, 1423566.3, 2105814.63, 2249555.41, 2230885.74, 1983157.8,
 D = c(3889, 716, 587, 589, 791, 816, 832, 1257, 1651, 2721, 4310, 
 6636, 10536, 11043, 23312, 34945, 44537, 50392)
   
-## single-year ages for TOPALS schedule
-
-age = 0:99
-knot_positions = c(0,1,10,20,40,70)
 
 ## standard schedule is (arbitrarily) the 1959 period schedule 
 ## for Canadian females at ages 0,1,...,99 
@@ -361,6 +362,11 @@ ITA_HMD_logmx =
 -2.1253, -1.9713, -1.8905, -1.7861, -1.6842, -1.5945, -1.4583, 
 -1.3792, -1.297, -1.2087, -1.1393, -1.0245, -0.9444, -0.8681, 
 -0.7958, -0.7276)
+
+
+## single-year ages for TOPALS schedule
+age = 0:99
+knot_positions = c(0,1,10,20,40,70)
 
 ## B is an Ax7 matrix. Each column is a linear B-spline basis function
 B      = bs( age, knots=knot_positions, degree=1 )
@@ -409,7 +415,7 @@ Now iterate a few times from a starting point of $\hat{\boldsymbol{\alpha}}=0$.
 
 ```{r}
 
- alpha = matrix(NA,K,6)
+ alpha = matrix(NA,K,6, dimnames=list(c(knot_positions,99), paste0('iter',0:5)))
 
  alpha[,1] = rep(0,K)
 
@@ -470,7 +476,8 @@ for (i in 1:5) {
     D = rpois(length(N), N* bigD/bigN)
     
   ## TOPALS fit with PIRLS
-     alpha = matrix(NA,K,6)
+   alpha = matrix(NA,K,6, dimnames=list(c(knot_positions,99), paste0('iter',0:5)))
+
   
    alpha[,1] = rep(0,K)
   
@@ -533,7 +540,7 @@ for (i in 1:5) {
     D = rpois(length(N), N* bigD/bigN)
     
   ## TOPALS fit with PIRLS
-     alpha = matrix(NA,K,6)
+   alpha = matrix(NA,K,6, dimnames=list(c(knot_positions,99), paste0('iter',0:5)))    
   
    alpha[,1] = rep(0,K)
   
