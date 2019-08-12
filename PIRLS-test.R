@@ -9,7 +9,7 @@ library(splines)
 ## deaths, expos, mx for 
 ## both 1- and 5-year groups
 
-NEED.HMD.DOWNLOAD = !exists('ITA.Rdata')
+NEED.HMD.DOWNLOAD = !file.exists('ITA.Rdata')
 
 if (NEED.HMD.DOWNLOAD) {
   
