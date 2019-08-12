@@ -223,8 +223,7 @@ $$
 &= \sum_{g=1}^{G}\left(   \frac{D_g}{M_g}   \boldsymbol{B}^\prime \,diag(\boldsymbol{\mu})\:w_g\: -\:  
 N_g \: \boldsymbol{B}^\prime \,diag(\boldsymbol{\mu})\, w_g \right)
 - \boldsymbol{P}\boldsymbol{\alpha} \\
-&=  \boldsymbol{X}^\prime \:\ \left[ \sum_{g=1}^{G}\left(   \frac{D_g}{M_g}  \: -\:  
-N_g \:  \right) \right]
+&=  \boldsymbol{X}^\prime \:\ diag(\frac{\boldsymbol{D}_{obs}}{\boldsymbol{M}} - \boldsymbol{N})
 - \boldsymbol{P}\boldsymbol{\alpha} \\
 &=  \boldsymbol{X}^\prime diag(\frac{\boldsymbol{D}_{obs} - \hat{\boldsymbol{D}}}{\boldsymbol{M}}) 
 - \boldsymbol{P}\boldsymbol{\alpha} 
