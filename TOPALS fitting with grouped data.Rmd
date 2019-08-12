@@ -308,10 +308,12 @@ Eq. (\ref{eq:final-IRLS}) is analogous to a (penalized) weighted least squares r
 
 Age groups for this exercise are 0, 1--4, 5--9,...,80--85.  
 
-```{r}
+```{r message=FALSE}
 library(tidyverse, quietly = TRUE)
 library(splines, quietly = TRUE)
+```
 
+```{r}
 ## Italian female 1980 HMD data for age groups
 
 L = c(0,1,seq(5,80,5))
@@ -324,6 +326,9 @@ N = c(312106.85, 1423566.3, 2105814.63, 2249555.41, 2230885.74, 1983157.8,
 D = c(3889, 716, 587, 589, 791, 816, 832, 1257, 1651, 2721, 4310, 
 6636, 10536, 11043, 23312, 34945, 44537, 50392)
   
+## save the real data in "big" versions -- useful for sampling later
+bigD = D
+bigN = N 
 
 ## standard schedule is (arbitrarily) the 1959 period schedule 
 ## for Canadian females at ages 0,1,...,99 
@@ -392,7 +397,7 @@ Define a function that takes a TOPALS $\hat{\boldsymbol{\alpha}}$ vector as inpu
 
 ```{r}
 
-next_alpha = function(alpha) {
+next_alpha = function(alpha, D, N) {
   mu = as.vector( exp( std + B %*% alpha))
   M  = as.vector( W %*% mu)
   
@@ -408,19 +413,16 @@ next_alpha = function(alpha) {
 }
 
 
+## (preliminary & rudimentary) function to fit and plot a TOPALS schedule
 
-```
-
-Now iterate a few times from a starting point of $\hat{\boldsymbol{\alpha}}=0$.
-
-```{r}
+fit_TOPALS = function(D,N) {
 
  alpha = matrix(NA,K,6, dimnames=list(c(knot_positions,99), paste0('iter',0:5)))
 
  alpha[,1] = rep(0,K)
 
  for (i in 2:ncol(alpha)) {
-   alpha[,i] = next_alpha( alpha[,i-1])
+   alpha[,i] = next_alpha( alpha[,i-1], D, N)
  } 
 
 
@@ -438,13 +440,14 @@ Now iterate a few times from a starting point of $\hat{\boldsymbol{\alpha}}=0$.
               
  
  df_single  = data.frame(
-                  age=age,
+                  age=age+.50,
                   std = std,
                   logmx_true = ITA_HMD_logmx,
                   logmx_fit  = std + B %*% alpha[,6]
                )
 
- ggplot(data = df_single, aes(x=age,y=logmx_true)) +
+this_plot =
+  ggplot(data = df_single, aes(x=age,y=logmx_true)) +
       geom_line(aes(x=age,y=std), color='black', lwd=0.5) +
       geom_line(aes(x=age,y=logmx_fit), color='red', lwd=3, alpha=.40) +
       geom_segment(data=df_grouped,aes(x=L,xend=U,
@@ -452,12 +455,20 @@ Now iterate a few times from a starting point of $\hat{\boldsymbol{\alpha}}=0$.
                                        yend=logmx_obs),
                    color='red',lwd=1, alpha=.90) +
          geom_point(size=0.60) +
-      labs(title='Italy Females 1980',
+      labs(x='Age',y='Log Mortality Rate',
+           title='Italy Females 1980',
            subtitle = paste(sum(D),'deaths to',round(sum(N)),'women')) +
       scale_x_continuous(breaks=c(0,1,seq(5,100,5)),minor_breaks = NULL) +
       theme_bw()
 
+  print(this_plot)
+  return(NULL)  # temporary -- will want detailed output
+}
+
+fit_TOPALS(bigD,bigN)
+
 ```
+
 In this figure the dots are the true rates from the HMD, the horizonal bars are the $\log(N_g/D_g)$ values from the grouped data, the black curve is the standard, and the red curve is the TOPALS single-year fit from PIRLS. 
 
 # Example: Very small populations with Italy 1980 rates
@@ -465,9 +476,6 @@ In this figure the dots are the true rates from the HMD, the horizonal bars are 
 Repeat the exercise in the last section but with simulated deaths for a much smaller population subject to the same rates.  Suppose there were only 10000 Italian women and simulate deaths:
 
 ```{r}
-## save the real data in "big" versions
-  bigD = D
-  bigN = N 
 
 for (i in 1:5) {  
   ## simulate a small population    
@@ -475,52 +483,7 @@ for (i in 1:5) {
     N = bigN * target_pop/sum(bigN)
     D = rpois(length(N), N* bigD/bigN)
     
-  ## TOPALS fit with PIRLS
-   alpha = matrix(NA,K,6, dimnames=list(c(knot_positions,99), paste0('iter',0:5)))
-
-  
-   alpha[,1] = rep(0,K)
-  
-   for (i in 2:ncol(alpha)) {
-     alpha[,i] = next_alpha( alpha[,i-1])
-   } 
-  
-   round( alpha,4)
-
-
-   ## plot the data, true rates, and PIRLS fit
-   
-   df_grouped = data.frame(
-                  L = L,
-                  U = U,
-                  N = N,
-                  D = D
-                 ) %>%
-            mutate(logmx_obs = log(D/N))
-                
-   
-   df_single  = data.frame(
-                    age=age,
-                    std = std,
-                    logmx_true = ITA_HMD_logmx,
-                    logmx_fit  = std + B %*% alpha[,6]
-                 )
-  
-  this_fig= ggplot(data = df_single, aes(x=age,y=logmx_true)) +
-        geom_line(aes(x=age,y=std), color='black', lwd=0.5) +
-        geom_line(aes(x=age,y=logmx_fit), color='red', lwd=3, alpha=.40) +
-        geom_segment(data=df_grouped,aes(x=L,xend=U,
-                                         y=logmx_obs,
-                                         yend=logmx_obs),
-                     color='red',lwd=1, alpha=.90) +
-           geom_point(size=0.60) +
-        labs(title='Italy Females 1980 -- Simulated Small Population',
-             subtitle = paste(sum(D),'deaths to',round(sum(N)),'women')) +
-        scale_x_continuous(breaks=c(0,1,seq(5,100,5)),minor_breaks = NULL) +
-        theme_bw()
-   
-  print(this_fig)
-
+    fit_TOPALS(D,N)
 }
 ```
 
@@ -529,60 +492,13 @@ for (i in 1:5) {
 Repeat the exercise in the last section but with simulated deaths for a much smaller population subject to the same rates.  Suppose there were only 1000 Italian women and simulate deaths:
 
 ```{r}
-## save the real data in "big" versions
-  bigD = D
-  bigN = N 
-
 for (i in 1:5) {  
   ## simulate a small population    
     target_pop = 1000
     N = bigN * target_pop/sum(bigN)
     D = rpois(length(N), N* bigD/bigN)
     
-  ## TOPALS fit with PIRLS
-   alpha = matrix(NA,K,6, dimnames=list(c(knot_positions,99), paste0('iter',0:5)))    
-  
-   alpha[,1] = rep(0,K)
-  
-   for (i in 2:ncol(alpha)) {
-     alpha[,i] = next_alpha( alpha[,i-1])
-   } 
-  
-   round( alpha,4)
-
-
-   ## plot the data, true rates, and PIRLS fit
-   
-   df_grouped = data.frame(
-                  L = L,
-                  U = U,
-                  N = N,
-                  D = D
-                 ) %>%
-            mutate(logmx_obs = log(D/N))
-                
-   
-   df_single  = data.frame(
-                    age=age,
-                    std = std,
-                    logmx_true = ITA_HMD_logmx,
-                    logmx_fit  = std + B %*% alpha[,6]
-                 )
-  
-  this_fig= ggplot(data = df_single, aes(x=age,y=logmx_true)) +
-        geom_line(aes(x=age,y=std), color='black', lwd=0.5) +
-        geom_line(aes(x=age,y=logmx_fit), color='blue', lwd=3, alpha=.40) +
-        geom_segment(data=df_grouped,aes(x=L,xend=U,
-                                         y=logmx_obs,
-                                         yend=logmx_obs),
-                     color='red',lwd=1, alpha=.90) +
-           geom_point(size=0.60) +
-        labs(title='Italy Females 1980 -- Simulated Small Population',
-             subtitle = paste(sum(D),'deaths to',round(sum(N)),'women')) +
-        scale_x_continuous(breaks=c(0,1,seq(5,100,5)),minor_breaks = NULL) +
-        theme_bw()
-   
-  print(this_fig)
-
+    fit_TOPALS(D,N)
 }
+
 ```
