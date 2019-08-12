@@ -1,167 +1,275 @@
-library(HMDHFDplus)
 library(tidyverse)
-library(splines)
 
-#id = userInput()
-#pw = userInput()
+rm(list=ls())
 
-## if necessary, get Italy 1980 Female data: 
-## deaths, expos, mx for 
-## both 1- and 5-year groups
+#============== DATA ===========================
+## Italy 1980 Female data from HMD (true e0 from HMD is 77.42)
 
-NEED.HMD.DOWNLOAD = !file.exists('ITA.Rdata')
+ITA = read.csv(file='ITA-Female-1980.csv')
 
-if (NEED.HMD.DOWNLOAD) {
-  
-    rate1 = readHMDweb('ITA', 'fltper_1x1',
-                      password = pw, username=id) %>%
-              filter(Year==1980) %>%
-              select(age=Age,mx=mx) %>%
-              mutate(logmx = log(mx))
-    
-    rate5 = readHMDweb('ITA', 'fltper_5x1',
-                       password = pw, username=id) %>%
-              filter(Year==1980) %>%
-              select(age=Age,mx=mx) %>%
-              mutate(logmx = log(mx))
-    
-    N5 = readHMDweb('ITA', 'Exposures_5x1',
-                       password = pw, username=id) %>%
-      filter(Year==1980) %>%
-      select(age=Age,expos=Female)
-    
-    D5 = readHMDweb('ITA', 'Deaths_5x1',
-                    password = pw, username=id) %>%
-      filter(Year==1980) %>%
-      select(age=Age,deaths=Female)
-    
-    ITA = full_join(N5,D5, by='age') %>%
-            full_join(rate5, by='age') %>%
-          filter(age < 100)
-    
-    ## get an arbitrary standard 
-    ## for single ages 0..99: Canada Females 1959
-    
-    CAN = readHMDweb('CAN', 'fltper_1x1',
-                       password = pw, username=id) %>%
-      filter(Year==1959, Age<100) %>%
-      select(age=Age,mx=mx) %>%
-      mutate(logmx = log(mx))
-    
-    std = smooth.spline(CAN$logmx, nknots=20)$y
-    
-    save(rate1, rate5, N5, D5, ITA, std, file='ITA.Rdata')
-} else {
-    load('ITA.Rdata')
-}
+# standard schedule = smoothed CAN females 1959 log rates at 0,1,...99
+std =c(-3.8933, -5.7776, -6.8474, -7.3298, -7.4519, -7.4408, -7.4807, 
+       -7.5845, -7.7219, -7.8628, -7.9771, -8.041, -8.0568, -8.0329, 
+       -7.9779, -7.9004, -7.8088, -7.7101, -7.6113, -7.5195, -7.4415, 
+       -7.3823, -7.3393, -7.308, -7.2837, -7.2619, -7.238, -7.2082, 
+       -7.1711, -7.1264, -7.0735, -7.0118, -6.9414, -6.8648, -6.7849, 
+       -6.7047, -6.6272, -6.5544, -6.4845, -6.4147, -6.3423, -6.2644, 
+       -6.1791, -6.0872, -5.9904, -5.8903, -5.7887, -5.6869, -5.586, 
+       -5.4866, -5.3895, -5.2953, -5.205, -5.1186, -5.0347, -4.9513, 
+       -4.8664, -4.778, -4.6847, -4.5877, -4.4887, -4.3895, -4.2918, 
+       -4.1969, -4.1041, -4.0122, -3.9199, -3.8261, -3.7297, -3.6303, 
+       -3.5279, -3.4221, -3.3129, -3.2004, -3.0861, -2.9716, -2.8589, 
+       -2.7497, -2.6457, -2.5482, -2.4556, -2.3659, -2.2771, -2.187, 
+       -2.0942, -1.9991, -1.9027, -1.8062, -1.7105, -1.6164, -1.5242, 
+       -1.434, -1.3458, -1.2596, -1.1758, -1.0958, -1.0212, -0.9535, 
+       -0.8944, -0.8455)
+
+
+
 ##################################################
 
-age = 0:99
-knot_positions = c(0,1,10,20,40,70)
+# note that this sources TOPALS_fit.R (the grouped version)
+# rather than TOPALS_fit function.R (the single-year version)
 
-## B is an Ax7 matrix. Each column is a linear B-spline basis function
-B      = bs( age, knots=knot_positions, degree=1 )
-K = ncol(B) 
+source('TOPALS_fit.R')
 
-D1 = diff( diag(K), diff=1)
-P  = 2 * crossprod(D1)
-####################################
+## plotting function
+show_fit = function(fit, std, true_schedule, fit_color='red') {
+  
+  df_grouped = data.frame(
+    L = fit$L,
+    U = fit$U,
+    N = fit$N,
+    D = fit$D
+  ) %>%
+    mutate(logmx_obs = log(D/N))
+  
+  
+  df_single  = data.frame(
+    age=seq(std)-0.5,
+    std = std,
+    logmx_true = true_schedule,
+    logmx_fit  = myfit$logm
+  )
+  
+  this_plot =
+    ggplot(data = df_single, aes(x=age,y=logmx_true)) +
+    geom_line(aes(x=age,y=std), color='black', lwd=0.2) +
+    geom_line(aes(x=age,y=logmx_fit), color=fit_color, lwd=3, alpha=.40) +
+    geom_segment(data=df_grouped,aes(x=L,xend=U,
+                                     y=logmx_obs,
+                                     yend=logmx_obs),
+                 color=fit_color,lwd=1, alpha=.90) +
+    geom_point(size=0.80) +
+    labs(x='Age',y='Log Mortality Rate',
+         title='Italy Females 1980',
+         subtitle = paste(sum(D),'deaths to',round(sum(N)),'women')) +
+    scale_x_continuous(breaks=c(0,1,seq(5,100,5)),minor_breaks = NULL) +
+    theme_bw()
+  
+  print(this_plot)
+} # show_fit
+
+# trapez approx of life expectancy from a logmx schedule over ages 0..99
+e0 = function(logmx) {
+  mx = exp(logmx)
+  px = exp(-mx)
+  lx = c(1,cumprod(px))
+  return( sum(head(lx,-1) + tail(lx,-1)) / 2)
+}
+
+#====================================== 
+# FULL DATASET WITH 1-YEAR GROUPS 
+#======================================
+
+## full dataset: 0,1,...99
+N = ITA$N[1:100]
+D = ITA$D[1:100]
+
+L = 0:99
+U = 1:100
+
+myfit = TOPALS_fit(D=D, N=N, std=std,
+                   group_lower_age = L,
+                   group_upper_age = U,
+                   details=TRUE)
+
+show_fit( myfit, std, true_schedule = ITA$logmx[1:100], 
+          fit_color = 'red')
+
+#====================================== 
+# FULL DATASET WITH 5-YEAR GROUPS 
+#======================================
+
 L = c(0,1,seq(5,95,5))
+U = c( tail(L,-1), 100)
 
-W = matrix(0, nrow=length(L), ncol=length(age),
-           dimnames=list(L,age))
+N = sapply(seq(L), function(g) {
+             tmp = sum(filter(ITA, L[g] <= age, age < U[g])$N)
+           } )
 
-W['0','0'] = 1
-W['1',2:5] = 0.25
-for (i in 3:21) W[i, 5*(i-2)+1:5] = 0.2
+D = sapply(seq(L), function(g) {
+  tmp = sum(filter(ITA, L[g] <= age, age < U[g])$D)
+} )
 
-bigN = ITA$expos
-bigD = ITA$deaths
+myfit = TOPALS_fit(D=D, N=N, std=std,
+                   group_lower_age = L,
+                   group_upper_age = U,
+                   details=TRUE)
 
-#######################################################
-## experimental sample
-#######################################################
-target_pop = 100
-factor     = target_pop / sum(bigN)
+show_fit( myfit, std, true_schedule = ITA$logmx[1:100], 
+          fit_color = 'purple')
 
-N = bigN * factor
-D = rpois(length(N), N * bigD/bigN)
 
-Q = function(alpha) {
-  mu1 = exp( std + B %*% alpha )
-  mu = W %*% mu1
-  logL    = sum( -N * mu + D * log(mu))
-  penalty = - 1/2 * t(alpha) %*% P %*% alpha
-  return(unlist( list( logL=logL, penalty=penalty, obj_fn = logL + penalty)))
-}
+#====================================== 
+# FULL DATASET WITH 10-YEAR GROUPS 
+#======================================
 
-## first exploratory iterations
-alpha = rep(0,K)
+L = c(0,1,seq(10,90,10))
+U = c( tail(L,-1), 100)
 
-next_alpha = function(alpha) {
-  eta = as.vector( exp( std + B %*% alpha))
-  mu  = as.vector( W %*% eta)
-  
-  Dhat = N * mu
-  
-  X = W %*% diag(eta) %*% B
-  A = diag(N/mu)
-  
-  y = (D-Dhat)/N + X %*% alpha
-  
-  updated_alpha = solve( t(X) %*% A %*% X + P, t(X) %*% A %*% y)
-  return(updated_alpha)
-}
+N = sapply(seq(L), function(g) {
+  tmp = sum(filter(ITA, L[g] <= age, age < U[g])$N)
+} )
 
-maxiter = 25
-a = matrix(NA, K, maxiter)
-a[,1] = alpha
+D = sapply(seq(L), function(g) {
+  tmp = sum(filter(ITA, L[g] <= age, age < U[g])$D)
+} )
 
-i = 2
-while (i <= maxiter) {
-  a[,i] = next_alpha( a[,i-1])
-  delta_a = a[,i] - a[,i-1]
-  if (all(abs(delta_a) < .00005)) break
-  i = i+1
-}
+myfit = TOPALS_fit(D=D, N=N, std=std,
+                   group_lower_age = L,
+                   group_upper_age = U,
+                   details=TRUE)
 
-alpha_hat = a[,i]
+show_fit( myfit, std, true_schedule = ITA$logmx[1:100], 
+          fit_color = 'orangered')
 
-## plot data
-op = par(no.readonly = TRUE)
-par(mfrow=c(1,2))
 
-hues = c('red','darkgreen','gold','violet','coral','royalblue','orangered','salmon','lawngreen')
-this_color = sample(hues,1)
+#--------------------------------------
+#  SMALL POPULATION SIMULATIONS
+#--------------------------------------
 
-plot( age+.50, rate1$logmx[1:100], pch=16, ylim=c(-10,0),
-      main=paste(sum(D),'deaths among', round(sum(N)),'women',
-                 '\n',
-           ifelse(i<maxiter, 'CONVERGED', 'DID NOT CONVERGE')))
+for (target_pop in c(500000, 100000, 10000, 1000)) {
 
-lines( age+.50, std, col='grey', lwd=3)
-lines( age+.50, std + B %*% alpha_hat, col=this_color, lwd=3)
+    #====================================== 
+    # SMALL POPULATION DATASETS WITH 1-YEAR GROUPS 
+    #======================================
+    
+    L = 0:99
+    U = 1:100
+    
+    bigN = sapply(seq(L), function(g) {
+      tmp = sum(filter(ITA, L[g] <= age, age < U[g])$N)
+    } )
+    
+    bigD = sapply(seq(L), function(g) {
+      tmp = sum(filter(ITA, L[g] <= age, age < U[g])$D)
+    } )
+    
+    nsim = 500
+    e    = rep(NA,nsim)
+    
+    N          = bigN * target_pop/sum(bigN)
+    
+    for (i in 1:nsim) {
+      D = rpois(length(N), N * bigD/bigN)
+      
+      myfit = TOPALS_fit(D=D, N=N, std=std,
+                         group_lower_age = L,
+                         group_upper_age = U,
+                         details=TRUE)
+      
+      e[i] = e0(myfit$logm)
+    }
+    
+    MAE = round(mean( abs(e-77.42)),2)
+    
+    plot( density(e, adj=1.5), main=paste('e0 [1-yr groups, pop=',target_pop,']\nMAE=',MAE))
+    
+    qq = quantile(e, probs=c(.10,.50,.90))
+    abline(v=77.42)
+    points( qq['50%'], .01, pch=16, cex=1.5)
+    segments( x0=qq['10%'], y0=0.01, x1=qq['90%'], y1=0.01, lwd=3)
+    
+    
+    #====================================== 
+    # SMALL POPULATION DATASETS WITH 5-YEAR GROUPS 
+    #======================================
+    
+    L = c(0,1,seq(5,95,5))
+    U = c( tail(L,-1), 100)
+    
+    bigN = sapply(seq(L), function(g) {
+      tmp = sum(filter(ITA, L[g] <= age, age < U[g])$N)
+    } )
+    
+    bigD = sapply(seq(L), function(g) {
+      tmp = sum(filter(ITA, L[g] <= age, age < U[g])$D)
+    } )
+    
+    nsim = 500
+    e    = rep(NA,nsim)
+    
+    N          = bigN * target_pop/sum(bigN)
+    
+    for (i in 1:nsim) {
+      D = rpois(length(N), N * bigD/bigN)
+      
+      myfit = TOPALS_fit(D=D, N=N, std=std,
+                         group_lower_age = L,
+                         group_upper_age = U,
+                         details=TRUE)
+      
+      e[i] = e0(myfit$logm)
+    }
+    
+    MAE = round(mean( abs(e-77.42)),2)
+    
+    plot( density(e, adj=1.5), main=paste('e0 [5-yr groups, pop=',target_pop,']\nMAE=',MAE))
+    qq = quantile(e, probs=c(.10,.50,.90))
+    abline(v=77.42)
+    points( qq['50%'], .01, pch=16, cex=1.5)
+    segments( x0=qq['10%'], y0=0.01, x1=qq['90%'], y1=0.01, lwd=3)
+    
+    
+    #====================================== 
+    # SMALL POPULATION DATASETS WITH 10-YEAR GROUPS 
+    #======================================
+    
+    L = c(0,1,seq(10,90,10))
+    U = c( tail(L,-1), 100)
+    
+    bigN = sapply(seq(L), function(g) {
+      tmp = sum(filter(ITA, L[g] <= age, age < U[g])$N)
+    } )
+    
+    bigD = sapply(seq(L), function(g) {
+      tmp = sum(filter(ITA, L[g] <= age, age < U[g])$D)
+    } )
+    
+    nsim = 500
+    e    = rep(NA,nsim)
+    
+    N          = bigN * target_pop/sum(bigN)
+    
+    for (i in 1:nsim) {
+      D = rpois(length(N), N * bigD/bigN)
+      
+      myfit = TOPALS_fit(D=D, N=N, std=std,
+                         group_lower_age = L,
+                         group_upper_age = U,
+                         details=TRUE)
+      
+      e[i] = e0(myfit$logm)
+    }
+    
+    MAE = round(mean( abs(e-77.42)),2)
+    
+    plot( density(e, adj=1.5), main=paste('e0 [10-yr groups, pop=',target_pop,']\nMAE=',MAE))
+    qq = quantile(e, probs=c(.10,.50,.90))
+    abline(v=77.42)
+    points( qq['50%'], .01, pch=16, cex=1.5)
+    segments( x0=qq['10%'], y0=0.01, x1=qq['90%'], y1=0.01, lwd=3)
+    
 
-for (i in seq(L)) {
-   y = log(D[i]/N[i])
-   H = ifelse(i<length(L), L[i+1], 100)
-   segments(L[i],y,H,y, col=this_color, lwd=3)
-}
-abline(v=c(L,100),lty=2, col='grey')
-
-for (i in seq(L)) {
-  y = log(D[i]/N[i])
-  H = ifelse(i<length(L), L[i+1], 100)
-  segments(L[i],y,H,y, col=this_color, lwd=4)
-}
-
-abline(v=c(L,100),lty=2, col='grey')
-text(L, c(-8.5,rep(-9,length(L)-1)), D, cex=.50)
-points( knot_positions, rep(-10,length(knot_positions)), pch=15, col=2,cex=1.2)
-
-apply(a,2,Q)
-
-matplot(t(a), type='o', main='Offsets', xlab="Iteration")
-
-par(op)
-
+} # for target_pop
