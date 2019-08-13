@@ -3,7 +3,7 @@
 #
 # Carl Schmertmann
 #   created 01 Mar 2018
-#   edited  12 Aug 2019 
+#   edited  13 Aug 2019 
 
 # + added fitted log mort, basis, etc to detailed output
 # + added ability to fit age-grouped as well as single-yr data
@@ -11,18 +11,17 @@
 #     to (penalized) IRLS
 #
 # Fits TOPALS parameters to single-year or age-group (D,N) 
-# data by penalized IRLS with analytical derivatives
+# data by penalized IRLS with analytical derivatives 
 #
 # A more complete explanation is in 
 # https://github.com/schmert/TOPALS/blob/master/TOPALS_fitting_with_grouped_data.pdf
 #------------------------------------------------------------
 
 TOPALS_fit = function( N, D, std,
-                       group_lower_age    = 0:99,
-                       group_upper_age    = 1:100,
+                       age_group_bounds   = 0:100,
                        knot_positions     = c(0,1,10,20,40,70), 
                        penalty_precision  = 2,
-                       max_iter           = 20,
+                       max_iter           = 50,
                        alpha_tol          = .00005,
                        details            = FALSE) {
 
@@ -40,13 +39,13 @@ TOPALS_fit = function( N, D, std,
     P  = penalty_precision * crossprod(D1)
     
     ## number and width of age groups
-    G     = length(group_lower_age)   
-    nages = group_upper_age - group_lower_age
+    G     = length(age_group_bounds)-1   
+    nages = diff(age_group_bounds)
     
     ## weighting matrix for mortality rates (assumes uniform
     ## distribution of single-year ages within groups)
     W = matrix(0, nrow=G, ncol=A, 
-               dimnames=list(group_lower_age , age))
+               dimnames=list(head(age_group_bounds,-1) , age))
 
     offset = 0
     for (g in 1:G) {
@@ -111,19 +110,18 @@ TOPALS_fit = function( N, D, std,
       
       covar = solve( t(X) %*% A %*% X + P)
         
-      return( list( alpha    = a, 
-                    D        = D,
-                    N        = N,
-                    L        = group_lower_age,
-                    U        = group_upper_age,
-                    knots    = knot_positions,
-                    std      = std,
-                    B        = B,
-                    logm     = std + B %*% a,
-                    covar    = covar,
-                    Qvalue   = Q(a),
-                    converge = converge, 
-                    maxiter  = overrun))
+      return( list( alpha             = a, 
+                    D                 = D,
+                    N                 = N,
+                    age_group_bounds  = age_group_bounds,
+                    knots             = knot_positions,
+                    std               = std,
+                    B                 = B,
+                    logm              = std + B %*% a,
+                    covar             = covar,
+                    Qvalue            = Q(a),
+                    converge          = converge, 
+                    maxiter           = overrun))
     } else return( a) 
     
 } # TOPALS_fit
