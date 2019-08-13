@@ -172,7 +172,6 @@ scenario = scenario %>%
 
 for (s in 1:nrow(scenario)) {
   
-  print(s)
   target_pop = scenario$target_pop[s]
   bounds     = unlist( scenario$bounds[s] )
 
@@ -225,11 +224,12 @@ for (p in unique(scenario$target_pop)) {
   
   this_plot = 
     ggplot(data=df, aes(x=x,y=y, color=as.factor(grouping))) +
-      geom_line(lwd=3, alpha=.80) +
+      geom_line(lwd=2, alpha=.70) +
       labs(title=paste('Estimated e0 with population=', 
                        format(p,scientific = FALSE)),
            x='e0',y='density', color='Age Grouping') +
       geom_vline(xintercept = e0(ITA$logmx), lwd=1.5) +
+      scale_x_continuous(limits=c(65,90)) +
       theme_bw()
   
   print(this_plot)
