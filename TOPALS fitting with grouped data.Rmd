@@ -118,86 +118,64 @@ $$
 \frac{\partial \mu_x}{\partial \boldsymbol{\alpha}} = \mu_x \,\boldsymbol{b}_x 
 $$
 
-For the entire $A\times 1$ vector of rates this implies
+\noindent For the entire $G \times 1$ vector of group mortality rates, this implies
 $$
-\frac{\partial \ln \boldsymbol{\mu}^\prime}{\partial \boldsymbol{\alpha}} =
+\begin{aligned}
+\frac{\partial \boldsymbol{M}^\prime}{\partial \boldsymbol{\alpha}} &= 
+\frac{\partial }{\partial \boldsymbol{\alpha}}\,(\boldsymbol{\mu}^\prime \boldsymbol{W}^\prime) \\& = 
 \begin{pmatrix}
 \frac{\partial \ln \mu_0}{\partial \boldsymbol{\alpha}}
 & \cdots  
 & \frac{\partial \ln \mu_{A-1}}{\partial \boldsymbol{\alpha}}
-\end{pmatrix} 
-=
-\begin{pmatrix}
-\boldsymbol{b}_0
+\end{pmatrix} \boldsymbol{W}^\prime \\
+&=
+\begin{pmatrix} 
+\boldsymbol{b}_0 \mu_0
 & \cdots  
-& \boldsymbol{b}_{A-1}
-\end{pmatrix} 
-= \boldsymbol{B}^\prime 
+& \boldsymbol{b}_{A-1}\mu_{A-1}
+\end{pmatrix} \boldsymbol{W}^\prime \\
+&= \boldsymbol{B}^\prime \, diag(\boldsymbol{\mu}) \,\boldsymbol{W}^\prime
+\end{aligned}
 $$
-and
+\noindent Abbreviate this as 
 $$
-\frac{\partial  \boldsymbol{\mu}^\prime}{\partial \boldsymbol{\alpha}} =
-\begin{pmatrix}
-\frac{\partial  \mu_0}{\partial \boldsymbol{\alpha}}
-& \cdots  
-& \frac{\partial \mu_{A-1}}{\partial \boldsymbol{\alpha}}
-\end{pmatrix} 
-=
-\begin{pmatrix}
-\mu_0 \,\boldsymbol{b}_0
-& \cdots  
-& \mu_{A-1} \, \boldsymbol{b}_{A-1}
-\end{pmatrix} 
-= \boldsymbol{B}^\prime \,diag(\boldsymbol{\mu})
+\frac{\partial \boldsymbol{M}^\prime}{\partial \boldsymbol{\alpha}} = \boldsymbol{X}^\prime
 $$
-where both sets of derivatives are $K \times A$ matrices. 
+\noindent remembering that the $G \times K$ matrix $\boldsymbol{X}=\boldsymbol{W} \, diag(\boldsymbol{\mu}) \,\boldsymbol{B}$ varies with parameters $\boldsymbol{\alpha}$ via the $\mu$ terms in the central diagonal matrix.
 
 
-The derivative of expected deaths in group $g$ with respect to TOPALS parameters $\boldsymbol{\alpha}$ is a $K \times 1$ vector:
+The $G \times 1$ vector of expected deaths in groups $1\ldots G$ is
+$$
+\hat{\boldsymbol{D}} = \begin{pmatrix}
+N_1 M_1 \\
+\vdots \\
+N_G M_G \\
+\end{pmatrix} = diag(\boldsymbol{N})\, \boldsymbol{M}
+$$
+and the 
+derivative of its transpose with respect to TOPALS parameters $\boldsymbol{\alpha}$ is a $G \times K$ matrix:
 
 \begin{equation}
 \label{eq:dg-dalpha}
-\frac{\partial \hat{D}_g}{\partial \boldsymbol{\alpha}} 
-= N_g \: \frac{\partial M_g}{\partial \boldsymbol{\alpha}} 
-= N_g \: \frac{\partial}{\partial \boldsymbol{\alpha}}\left[ \boldsymbol{\mu}^\prime \boldsymbol{w}_g\right]  
-= N_g \: \frac{\partial \boldsymbol{\mu}^\prime}{\partial \boldsymbol{\alpha}} \boldsymbol{w}_g 
-= N_g \: \boldsymbol{B}^\prime \,diag(\boldsymbol{\mu})\, \boldsymbol{w}_g 
+\frac{\partial \hat{\boldsymbol{D}}^\prime}  
+{\partial \boldsymbol{\alpha}} =   
+\frac{\partial \boldsymbol{M}^\prime}{\partial \boldsymbol{\alpha}}\, diag(\boldsymbol{N})\,
+=
+ \boldsymbol{X}^\prime diag(\boldsymbol{N})
 \end{equation}
 
-where $\boldsymbol{w}_g^\prime$ is the $g$th row of $\boldsymbol{W}$, an $A \times 1$ vector of weights for group $g$. Assembling into $G$ columns produces a $K \times G$ matrix that summarizes how predicted deaths change with TOPALS offsets:
-\begin{equation}
-\label{eq:big-dg-dalpha}
-\frac{\partial \hat{\boldsymbol{D}}^\prime}{\partial \boldsymbol{\alpha}}
-=
-\begin{pmatrix}
-\frac{\partial \hat{D}_1}{\partial \boldsymbol{\alpha}}
-\cdots
-\frac{\partial \hat{D}_G}{\partial \boldsymbol{\alpha}}
-\end{pmatrix}
-=
-\boldsymbol{B}^\prime \,diag(\boldsymbol{\mu})
-\begin{pmatrix}
-N_1\,\boldsymbol{w}_1
-\cdots
-N_G\,\boldsymbol{w}_G
-\end{pmatrix}
-=
-\boldsymbol{B}^\prime \,diag(\boldsymbol{\mu}) \:
-\boldsymbol{W}^\prime\: diag(\boldsymbol{N})
-\end{equation}
-
-Because it appears in several places in the derivation, it is convenient to define an abbreviation $\boldsymbol{X}$ to the $G \times K$ matrix $\boldsymbol{W} diag(\boldsymbol{\mu}) \boldsymbol{B}$, remembering that it varies with $\boldsymbol{\alpha}$ because of the middle $\mu$ terms. Using this abbreviation we have
-$$
-\frac{\partial \hat{\boldsymbol{D}}^\prime}{\partial \boldsymbol{\alpha}} = \boldsymbol{X}^\prime diag(\boldsymbol{N})
-$$
 
 ### Penalized Log Likelihood for TOPALS parameters
 
 With the TOPALS parameterization the log likelihood for a sample $\{D_g,N_g\}$ is
 $$
-  \ln L(\boldsymbol{\alpha}) =  c + \sum_{g=1}^{G} \left(\, D_g \ln M_g(\boldsymbol{\alpha}) - \hat{D}_g(\boldsymbol{\alpha}) \right) 
+\begin{aligned}
+  \ln L(\boldsymbol{\alpha}) 
+&=  c + \sum_{g=1}^{G} \left(\, D_g \ln M_g(\boldsymbol{\alpha}) - \hat{D}_g(\boldsymbol{\alpha}) \right) \\
+&=  c + \left[ \ln M_1 \cdots \ln M_G \right] \boldsymbol{D}_{obs} -  \hat{\boldsymbol{D}}^\prime \boldsymbol{1} 
+ \end{aligned}
 $$
-where group-averaged rates $M_g$ are calculated from the matrix equation $\boldsymbol{M}=\boldsymbol{W}\,\boldsymbol{\mu(\boldsymbol{\alpha})}$.
+
 To stabilize estimates in small populations with few deaths, we add a small penalty term to the log likehood:
 
 \begin{align}
@@ -205,13 +183,11 @@ To stabilize estimates in small populations with few deaths, we add a small pena
 \label{eq:Qa-defn}
   Q(\boldsymbol{\alpha}) 
   &= \ln L(\boldsymbol{\alpha}) - \text{penalty}(\boldsymbol{\alpha}) \\
-  &= c + \sum_{g=1}^G \left(\, D_g \ln M_g(\boldsymbol{\alpha}) - \hat{D}_g(\boldsymbol{\alpha}) \right)  - \tfrac{1}{2}\,\boldsymbol{\alpha}^\prime \boldsymbol{P} \boldsymbol{\alpha}
+  &= c + \left[ \ln M_1 \cdots \ln M_G \right] \boldsymbol{D} -  \hat{\boldsymbol{D}}^\prime \boldsymbol{1}  - \tfrac{1}{2}\,\boldsymbol{\alpha}^\prime \boldsymbol{P} \boldsymbol{\alpha}
 \end{split}
 \end{align}  
 
-
-
-where $\boldsymbol{P}$ is a $K \times K$ matrix of constants selected so that the penalty term equals the sum of squared differences between consecutive  $\alpha$ parameters -- i.e.,  $\tfrac{1}{2}\boldsymbol{\alpha}^\prime \boldsymbol{P} \boldsymbol{\alpha}=\sum_{k=2}^K (\alpha_k-\alpha_{k-1})^2$. Adding the penalty gives priority to sets of TOPALS parameters $(\alpha_1\ldots \alpha_K)$ that are similar to one another, and thus to log mortality schedules that look more like up-and-down vertical shifts of the standard schedule. For all but the smallest populations the penalty term has virtually no effect on parameter estimates. For very small populations with zero deaths in some age groups, the addition of the penalty  stabilizes estimated schedules by borrowing strength across groups. 
+\noindent where $\boldsymbol{P}$ is a $K \times K$ matrix of constants selected so that the penalty term equals the sum of squared differences between consecutive  $\alpha$ parameters -- i.e.,  $\tfrac{1}{2}\boldsymbol{\alpha}^\prime \boldsymbol{P} \boldsymbol{\alpha}=\sum_{k=2}^K (\alpha_k-\alpha_{k-1})^2$. Adding the penalty gives priority to sets of TOPALS parameters $(\alpha_1\ldots \alpha_K)$ that are similar to one another, and thus to log mortality schedules that look more like up-and-down vertical shifts of the standard schedule. For all but the smallest populations the penalty term has virtually no effect on parameter estimates. For very small populations with zero deaths in some age groups, the addition of the penalty  stabilizes estimated schedules by borrowing strength across groups. 
 
 ### Maximizing via Iteratively Reweighted Regression
 
@@ -221,22 +197,23 @@ We want to select $\boldsymbol{\alpha}$ to maximize $Q$. This requires setting a
 Differentiating Eq. (\ref{eq:Qa-defn}) with respect to the TOPALS parameters and substituting some of the results above produces
 $$
 \begin{aligned}
-\begin{split}
-  \frac{\partial Q}{\partial\boldsymbol{\alpha}} &= \sum_{g=1}^{G}\left(  D_g \frac{1}{M_g}   \frac{\partial M_g}{\partial\boldsymbol{\alpha}}\: -\:  
-\frac{\partial \hat{D_g}}{\partial\boldsymbol{\alpha}} \right)
-- \boldsymbol{P}\boldsymbol{\alpha} \\
-&= \sum_{g=1}^{G}\left(   \frac{D_g}{M_g}   \boldsymbol{B}^\prime \,diag(\boldsymbol{\mu})\:\boldsymbol{w}_g\: -\:  
-N_g \: \boldsymbol{B}^\prime \,diag(\boldsymbol{\mu})\, \boldsymbol{w}_g \right)
-- \boldsymbol{P}\boldsymbol{\alpha} \\
-&=  \boldsymbol{X}^\prime \:\ diag(\frac{\boldsymbol{D}_{obs}}{\boldsymbol{M}} - \boldsymbol{N})
-- \boldsymbol{P}\boldsymbol{\alpha} \\
+  \frac{\partial Q}{\partial\boldsymbol{\alpha}} 
+  &= 
+   \left[ \tfrac{1}{M_1}\tfrac{\partial M_1}{\partial \boldsymbol{\alpha}}  \cdots
+   \tfrac{1}{M_G}\tfrac{\partial M_G}{\partial \boldsymbol{\alpha}}  \right] \boldsymbol{D}_{obs} -  \boldsymbol{X}^\prime diag(\boldsymbol{N}) \boldsymbol{1}  -  \boldsymbol{P} \boldsymbol{\alpha}
+ \\
+&= \frac{\partial \boldsymbol{M}^\prime}{\partial \boldsymbol{\alpha}} diag(\frac{1}{\boldsymbol{M}}) \, \boldsymbol{D}_{obs} - \boldsymbol{X}^\prime \boldsymbol{N} 
+-  \boldsymbol{P} \boldsymbol{\alpha} \\
+&= \boldsymbol{X}^\prime \, diag(\frac{1}{\boldsymbol{M}}) \, \boldsymbol{D}_{obs} - \boldsymbol{X}^\prime \boldsymbol{N} 
+-  \boldsymbol{P} \boldsymbol{\alpha} \\
+&= \boldsymbol{X}^\prime \, diag(\frac{1}{\boldsymbol{M}}) \, \boldsymbol{D}_{obs} - \boldsymbol{X}^\prime \, diag(\frac{1}{\boldsymbol{M}}) \hat{\boldsymbol{D}} 
+-  \boldsymbol{P} \boldsymbol{\alpha} \\
 &=  \boldsymbol{X}^\prime diag(\frac{\boldsymbol{D}_{obs} - \hat{\boldsymbol{D}}}{\boldsymbol{M}}) 
 - \boldsymbol{P}\boldsymbol{\alpha} 
-\end{split}
 \end{aligned}  
 $$
 
-where $\boldsymbol{D}_{obs}$ and $\boldsymbol{\hat{D}}$ are $G \times 1$ vectors of observed and predicted deaths by age group. For reasons that will become clear in a moment, it is convenient to define the abbreviation $\boldsymbol{A}=diag(\tfrac{N_1}{M_1}\ldots\tfrac{N_G}{M_G})$. Using this new abbreviation,
+\noindent For reasons that will become clear in a moment, it is convenient to define the abbreviation $\boldsymbol{A}=diag(\tfrac{N_1}{M_1}\ldots\tfrac{N_G}{M_G})$. Using this new abbreviation,
 
 \begin{equation}
 \label{eq:dQ-dalpha}
