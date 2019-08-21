@@ -135,9 +135,9 @@ $$
 \end{pmatrix} \boldsymbol{W}^\prime \\
 &=
 \begin{pmatrix} 
-\boldsymbol{b}_0 \,\mu_0
+\mu_0 \, \boldsymbol{b}_0 
 & \cdots  
-& \boldsymbol{b}_{A-1}\,\mu_{A-1}
+& \mu_{A-1} \, \boldsymbol{b}_{A-1}
 \end{pmatrix} \boldsymbol{W}^\prime \\
 &= \boldsymbol{B}^\prime \, diag(\boldsymbol{\mu}) \,\boldsymbol{W}^\prime
 \end{aligned}
@@ -158,7 +158,7 @@ N_G M_G \\
 \end{pmatrix} = diag(\boldsymbol{N})\, \boldsymbol{M}
 $$
 and the 
-derivative of its transpose with respect to TOPALS parameters $\boldsymbol{\alpha}$ is a $G \times K$ matrix:
+derivative of its transpose with respect to TOPALS parameters $\boldsymbol{\alpha}$ is a $K \times G$ matrix:
 
 \begin{equation}
 \label{eq:dg-dalpha}
@@ -284,7 +284,15 @@ and finally simplified to
 \end{equation}
 where $\hat{\boldsymbol{y}} = diag(\frac{\boldsymbol{D}_{obs} - \hat{\boldsymbol{D}}}{\boldsymbol{N}})  + \hat{\boldsymbol{X}} \hat{\boldsymbol{\alpha}}$. 
 
-Eq. (\ref{eq:final-IRLS}) is analogous to a (penalized) weighted least squares regression of $\hat{\boldsymbol{X}}$ on  $\hat{\boldsymbol{y}}$ with weights $\hat{\boldsymbol{A}}^{-1}$. Starting from an arbitrary vector $\hat{\boldsymbol{\alpha}}$, one can solve for the vector that maximizes penalized likelihood $Q(\boldsymbol{\alpha})$ by (1) calculating the values of ($\hat{\boldsymbol{X}},\hat{\boldsymbol{A}},\hat{\boldsymbol{D}}$) at the current parameter value, (2) solving eq. (\ref{eq:final-IRLS}) for $\boldsymbol{\alpha}^\ast$, and (3) repeating until convergence. This is the algorithm used in the **TOPALS_fit** function in the next sections.  
+The solution $\boldsymbol{\alpha}^\ast$ to Eq. (\ref{eq:final-IRLS}) is also the coefficient estimate from a (penalized) weighted least squares regression of $\hat{\boldsymbol{y}}$ on $\hat{\boldsymbol{X}}$ with weights $\hat{\boldsymbol{A}}^{-1}$. 
+
+Starting from an arbitrary vector $\hat{\boldsymbol{\alpha}}$, one can solve for the vector that maximizes penalized likelihood $Q(\boldsymbol{\alpha})$ by 
+
+1. calculating the values of ($\hat{\boldsymbol{X}},\hat{\boldsymbol{A}},\hat{\boldsymbol{D}}$) at the current parameter value
+2. solving eq. (\ref{eq:final-IRLS}) for $\boldsymbol{\alpha}^\ast$, and 
+3. repeating until convergence. 
+
+\noindent This is the algorithm used in the **TOPALS_fit** function in the next sections.  
 
 
 # Example: A TOPALS fit from five-year age groups for Italian Females in 1980
@@ -382,12 +390,13 @@ this_plot =
       geom_segment(data=df_grouped,aes(x=L,xend=U,
                                        y=logmx_obs,
                                        yend=logmx_obs),
-                   color=hue,lwd=1, alpha=.90) +
+                   color=hue,lwd=1.5, alpha=.90) +
          geom_point(size=0.60) +
       labs(x='Age',y='Log Mortality Rate',
            title='Italy Females 1980',
            subtitle = paste(sum(fit$D),'deaths to',round(sum(fit$N)),'women')) +
       scale_x_continuous(breaks=c(0,1,seq(5,100,5)),minor_breaks = NULL) +
+      scale_y_continuous(limits=c(-10,0),breaks=seq(-10,0,2),minor_breaks = NULL) +
       theme_bw()
 
   print(this_plot)
