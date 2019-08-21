@@ -3,7 +3,7 @@
 #
 # Carl Schmertmann
 #   created 01 Mar 2018
-#   edited  13 Aug 2019 
+#   edited  21 Aug 2019 
 
 # + added fitted log mort, basis, etc to detailed output
 # + added ability to fit age-grouped as well as single-yr data
@@ -12,6 +12,12 @@
 #
 # Fits TOPALS parameters to single-year or age-group (D,N) 
 # data by penalized IRLS with analytical derivatives 
+#
+#
+# age_group_bounds is a (G+1) vector of ages v that define
+# G closed age groups [v1,v2), [v2,v3)... [vG,vG+1)
+# For ex. if age_group_bounds = c(0,1,5,10,15,...,90)
+# then the age groups are [0,1), [1,5), [5,10), ..., [85,90)
 #
 # A more complete explanation is in 
 # https://github.com/schmert/TOPALS/blob/master/TOPALS_fitting_with_grouped_data.pdf

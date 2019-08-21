@@ -1,14 +1,14 @@
 ---
 title: "Fitting a TOPALS mortality model with age-grouped data, by Penalized Iteratively Weighted Least Squares (PIRLS)"
 author: "Carl Schmertmann"
-date: "11 Aug 2019"
+date: "21 Aug 2019"
 output:
   pdf_document: default
   html_document: default
 header-includes: 
   - \usepackage{setspace}
   - \onehalfspacing
-fontsize: 12pt
+fontsize: 11pt
 indent: TRUE
 ---
 
@@ -18,18 +18,17 @@ knitr::opts_chunk$set(echo = TRUE)
 
 # Main Idea
 
-The objective is to fit a TOPALS model mortality schedule for $A$ single years of age $x=0,1,\ldots,(A-1)$ from closed age-group data on exposure $N_1\ldots N_G$ and deaths $D_1\ldots D_G$, where the $G\le A$ and the age groups are defined by $G$ upper and lower bounds $[L_g,U_g)$ for $g=1\ldots G$.
-
+The objective is to fit a TOPALS model mortality schedule for $A$ single years of age $x=0,1,\ldots,(A-1)$ from exposure and death data for $G\le A$ age groups: $N_1\ldots N_G$ and deaths $D_1\ldots D_G$.
 
 ## Sample Data
 
-Observed data consists of deaths $D_g$ and exposure $N_g$ for closed, non-overlapping age groups $g=1\ldots G$ delimited by lower and upper bounds $[L_g,U_g)$. Denote $X_g$ as the set of integer ages that belong to group $g$, and $n_g$ as the number of ages in $X_g$.  
+Observed data consists of deaths $D_g$ and exposure $N_g$ for closed, non-overlapping age groups $g=1\ldots G$. Age groups are defined by a vector of $G+1$ boundary ages -- e.g. if the boundary ages are $0,1,5,10,\ldots,85,90$ then the age groups are $[0,1), [1,5),\ldots,[85,90)$. Denote $X_g$ as the set of integer ages that belong to group $g$, and $n_g$ as the number of ages in $X_g$.  
 
-A typical age grouping is $L=(0,1,5,10,\ldots,80)$ and $U=(1,5,10,15,\ldots,85)$. But if single-year death and exposure data is available then the "groups" could be simply integer ages, in which case $L=(0,1,2,\ldots,(A-1))$ and $U=(1,2,3,\ldots,A)$.   
+Typical age groups have boundaries like $0,1,5,10,\ldots,85,90$. However, if single-year death and exposure data is available then the "groups" could be simply integer ages, in which case boundaries for $A$ single-year "groups" would be $0,1,2,\ldots,A$ 
 
 ## Poisson Log Likelihood for Grouped Data
 
-Regardless of the age grouping in the data, we assume that there is a latent schedule for single-year ages. Deaths at each single-year age have a Poisson distribution with expected value equal to the (possibly unobserved) exposure $N_x$ times the mortality rate: 
+Regardless of the age grouping in the data, we assume that there is a latent schedule for $A$ single-year ages. Deaths at each single-year age have a Poisson distribution with expected value equal to the (possibly unobserved) exposure $N_x$ times the mortality rate: 
 $$
 D_x \sim Poisson \left( N_x\,\mu_x \right)\quad x=0,1,2,\ldots (A-1)
 $$
@@ -51,18 +50,16 @@ In the absence of single-year exposure data, we approximate with $M_g = [\tfrac{
 An alternative approach might interpolate single-year exposure $(N_0,N_1,\ldots N_{A-1})$ from the available $N_g$ to construct more nuanced weights for intra-group averaging of mortality rates. In most populations this would have only minor effects on estimates. 
 }
 
-The entire vector of $G$ averaged mortality rates by age group is therefore
+\noindent The entire vector of $G$ averaged mortality rates by age group is therefore
 $$
 \boldsymbol{M} = 
 \begin{pmatrix}
-n_1^{-1}\ldots n_1^{-1} & 0\ldots0 & \cdots & 0\ldots0 \\
-0\ldots0 &  n_2^{-1}\ldots n_2^{-1} & \cdots & 0\ldots0 \\
-\vdots & \vdots & \ddots & \vdots  \\
-0\ldots0 & 0\ldots0 & \cdots & n_G^{-1}\ldots n_G^{-1}
+n_1^{-1}\ldots n_1^{-1} & \cdots & 0\ldots0 \\
+\vdots  & \ddots & \vdots  \\
+0\ldots0 & \cdots & n_G^{-1}\ldots n_G^{-1}
 \end{pmatrix}
 \begin{pmatrix}
 \mu_0 \\
-\mu_1 \\
 \vdots \\
 \mu_{A-1} \\
 \end{pmatrix} 
@@ -79,7 +76,15 @@ $$
    &= c + \sum_{g=1}^{G} \left(\, D_g \ln M_g - \hat{D}_g \right) 
 \end{aligned}  
 $$
-where $\hat{D}_g=N_g M_g$ represents the expected number of deaths in group $g$. 
+where $\hat{D}_g=N_g M_g$ represents the expected number of deaths in group $g$. It will also be useful to express the likelihood in matrix terms:
+
+\begin{equation}
+\label{eq:vec-lik}
+\ln L = 
+c + \left[ \ln M_1 \cdots \ln M_G \right] \boldsymbol{D}_{obs} -  \hat{\boldsymbol{D}}^\prime \boldsymbol{1} 
+\end{equation}
+
+\noindent where $\boldsymbol{D}_{obs}$ and $\hat{\boldsymbol{D}}$ are $G\times 1$ vectors of observed and expected deaths, ordered by age group, and $\boldsymbol{1}$ is a $G\times1$ vector of ones.
 
 ## TOPALS Model Mortality Schedule
 
@@ -124,15 +129,15 @@ $$
 \frac{\partial \boldsymbol{M}^\prime}{\partial \boldsymbol{\alpha}} &= 
 \frac{\partial }{\partial \boldsymbol{\alpha}}\,(\boldsymbol{\mu}^\prime \boldsymbol{W}^\prime) \\& = 
 \begin{pmatrix}
-\frac{\partial \ln \mu_0}{\partial \boldsymbol{\alpha}}
+\frac{\partial \mu_0}{\partial \boldsymbol{\alpha}}
 & \cdots  
-& \frac{\partial \ln \mu_{A-1}}{\partial \boldsymbol{\alpha}}
+& \frac{\partial \mu_{A-1}}{\partial \boldsymbol{\alpha}}
 \end{pmatrix} \boldsymbol{W}^\prime \\
 &=
 \begin{pmatrix} 
-\boldsymbol{b}_0 \mu_0
+\boldsymbol{b}_0 \,\mu_0
 & \cdots  
-& \boldsymbol{b}_{A-1}\mu_{A-1}
+& \boldsymbol{b}_{A-1}\,\mu_{A-1}
 \end{pmatrix} \boldsymbol{W}^\prime \\
 &= \boldsymbol{B}^\prime \, diag(\boldsymbol{\mu}) \,\boldsymbol{W}^\prime
 \end{aligned}
@@ -176,7 +181,7 @@ $$
  \end{aligned}
 $$
 
-To stabilize estimates in small populations with few deaths, we add a small penalty term to the log likehood:
+\noindent To stabilize estimates in small populations with few deaths, we add a small penalty term to the log likehood:
 
 \begin{align}
 \begin{split}
@@ -200,9 +205,10 @@ $$
   \frac{\partial Q}{\partial\boldsymbol{\alpha}} 
   &= 
    \left[ \tfrac{1}{M_1}\tfrac{\partial M_1}{\partial \boldsymbol{\alpha}}  \cdots
-   \tfrac{1}{M_G}\tfrac{\partial M_G}{\partial \boldsymbol{\alpha}}  \right] \boldsymbol{D}_{obs} -  \boldsymbol{X}^\prime diag(\boldsymbol{N}) \boldsymbol{1}  -  \boldsymbol{P} \boldsymbol{\alpha}
+   \tfrac{1}{M_G}\tfrac{\partial M_G}{\partial \boldsymbol{\alpha}}  \right] \boldsymbol{D}_{obs} -  
+\frac{\partial \hat{\boldsymbol{D}}^\prime}{\partial \boldsymbol{\alpha}} \boldsymbol{1}  -  \boldsymbol{P} \boldsymbol{\alpha}
  \\
-&= \frac{\partial \boldsymbol{M}^\prime}{\partial \boldsymbol{\alpha}} diag(\frac{1}{\boldsymbol{M}}) \, \boldsymbol{D}_{obs} - \boldsymbol{X}^\prime \boldsymbol{N} 
+&= \frac{\partial \boldsymbol{M}^\prime}{\partial \boldsymbol{\alpha}} diag(\frac{1}{\boldsymbol{M}}) \, \boldsymbol{D}_{obs} - \frac{\partial \boldsymbol{M}^\prime}{\partial \boldsymbol{\alpha}} \, diag(\boldsymbol{N}) \, \boldsymbol{1}
 -  \boldsymbol{P} \boldsymbol{\alpha} \\
 &= \boldsymbol{X}^\prime \, diag(\frac{1}{\boldsymbol{M}}) \, \boldsymbol{D}_{obs} - \boldsymbol{X}^\prime \boldsymbol{N} 
 -  \boldsymbol{P} \boldsymbol{\alpha} \\
@@ -242,7 +248,7 @@ The iteratively reweighted least squares approach to solving the system of equat
 \hat{\boldsymbol{X}}^\prime \hat{\boldsymbol{A}} \: diag(\frac{\boldsymbol{D}_{obs}}{\boldsymbol{N}}) 
 \end{equation}
 
-which from Eq. (\ref{eq:dg-dalpha}) expands to
+\noindent which from Eq. (\ref{eq:dg-dalpha}) expands to
 
 \begin{equation}
 \label{eq:second-IRLS}
@@ -253,7 +259,7 @@ diag(\boldsymbol{N}) \hat{\boldsymbol{X}} \:  \,
 \hat{\boldsymbol{X}}^\prime \hat{\boldsymbol{A}} \: diag(\frac{1}{\boldsymbol{N}}) \boldsymbol{D}_{obs}
 \end{equation}
 
-which can be rearranged as 
+\noindent This can be rearranged as 
 $$
 \hat{\boldsymbol{X}}^\prime \hat{\boldsymbol{A}} \:  
  \hat{\boldsymbol{X}} \:  \,
@@ -278,7 +284,7 @@ and finally simplified to
 \end{equation}
 where $\hat{\boldsymbol{y}} = diag(\frac{\boldsymbol{D}_{obs} - \hat{\boldsymbol{D}}}{\boldsymbol{N}})  + \hat{\boldsymbol{X}} \hat{\boldsymbol{\alpha}}$. 
 
-Eq. (\ref{eq:final-IRLS}) is analogous to a (penalized) weighted least squares regression of $\hat{\boldsymbol{X}}$ on  $\hat{\boldsymbol{y}}$ with weights $\hat{\boldsymbol{A}}^{-1}$. Starting from an arbitrary vector $\hat{\boldsymbol{\alpha}}$, one can solve for the vector that maximizes penalized likelihood $Q(\boldsymbol{\alpha})$ by (1) calculating the values of ($\hat{\boldsymbol{X}},\hat{\boldsymbol{A}},\hat{\boldsymbol{D}}$) at the current parameter value, (2) solving eq. (\ref{eq:final-IRLS}) for $\boldsymbol{\alpha}^\ast$, and repeating until convergence. This is the algorithm used below. 
+Eq. (\ref{eq:final-IRLS}) is analogous to a (penalized) weighted least squares regression of $\hat{\boldsymbol{X}}$ on  $\hat{\boldsymbol{y}}$ with weights $\hat{\boldsymbol{A}}^{-1}$. Starting from an arbitrary vector $\hat{\boldsymbol{\alpha}}$, one can solve for the vector that maximizes penalized likelihood $Q(\boldsymbol{\alpha})$ by (1) calculating the values of ($\hat{\boldsymbol{X}},\hat{\boldsymbol{A}},\hat{\boldsymbol{D}}$) at the current parameter value, (2) solving eq. (\ref{eq:final-IRLS}) for $\boldsymbol{\alpha}^\ast$, and (3) repeating until convergence. This is the algorithm used in the **TOPALS_fit** function in the next sections.  
 
 
 # Example: A TOPALS fit from five-year age groups for Italian Females in 1980
@@ -291,10 +297,16 @@ library(splines, quietly = TRUE)
 ```
 
 ```{r}
+
+# include the fitting function
+source('TOPALS_fit.R', echo=TRUE)
+
+
 ## Italian female 1980 HMD data for age groups
 
-L = c(0,1,seq(5,80,5))
-U = c(tail(L,-1),85)
+
+boundaries = c(0,1,seq(5,85,5))  # last group is [80,85)
+
 
 N = c(312106.85, 1423566.3, 2105814.63, 2249555.41, 2230885.74, 1983157.8, 
 1874479.58, 1989351.99, 1772133.73, 1896866.51, 1836597.36, 1834496.64, 
@@ -302,13 +314,11 @@ N = c(312106.85, 1423566.3, 2105814.63, 2249555.41, 2230885.74, 1983157.8,
 
 D = c(3889, 716, 587, 589, 791, 816, 832, 1257, 1651, 2721, 4310, 
 6636, 10536, 11043, 23312, 34945, 44537, 50392)
-  
-## save the real data in "big" versions -- useful for sampling later
-bigD = D
-bigN = N 
 
-## standard schedule is (arbitrarily) the 1959 period schedule 
-## for Canadian females at ages 0,1,...,99 
+names(N) = names(D) = head(boundaries,-1)
+  
+## standard schedule is (very arbitrarily!) the 1959 period 
+## schedule for Canadian females at ages 0,1,...,99 
 ## these are the log mortality rates
 std = c(-3.8933, -5.7776, -6.8474, -7.3298, -7.4519, -7.4408, -7.4807, 
 -7.5845, -7.7219, -7.8628, -7.9771, -8.041, -8.0568, -8.0329, 
@@ -346,105 +356,60 @@ ITA_HMD_logmx =
 -0.7958, -0.7276)
 
 
-## single-year ages for TOPALS schedule
-age = 0:99
-knot_positions = c(0,1,10,20,40,70)
 
-## B is an Ax7 matrix. Each column is a linear B-spline basis function
-B      = bs( age, knots=knot_positions, degree=1 )
-K = ncol(B) 
-
-## penalty
-D1 = diff( diag(K), diff=1)
-P  = 2 * crossprod(D1)
-
-## weighting matrix W
-A = length(age) # number of single-year ages
-G = length(L)   # number of age groups
-
-W = matrix(0, nrow=G, ncol=A, dimnames=list(L,age))
-
-W['0','0'] = 1
-W['1',2:5] = 0.25
-for (i in 3:G) W[i, 5*(i-2)+1:5] = 0.2
-
-```
-
-Define a function that takes a TOPALS $\hat{\boldsymbol{\alpha}}$ vector as input and solves (\ref{eq:final-IRLS}) to produce an updated value $\boldsymbol{\alpha}^\ast$. 
-
-```{r}
-
-next_alpha = function(alpha, D, N) {
-  mu = as.vector( exp( std + B %*% alpha))
-  M  = as.vector( W %*% mu)
-  
-  Dhat = N * M
-  
-  X = W %*% diag(mu) %*% B
-  A = diag(N/M)
-  
-  y = (D-Dhat)/N + X %*% alpha
-  
-  updated_alpha = solve( t(X) %*% A %*% X + P, t(X) %*% A %*% y)
-  return(updated_alpha)
-}
-
-
-## (preliminary & rudimentary) function to fit and plot a TOPALS schedule
-
-fit_TOPALS = function(D,N) {
-
- alpha = matrix(NA,K,6, dimnames=list(c(knot_positions,99), paste0('iter',0:5)))
-
- alpha[,1] = rep(0,K)
-
- for (i in 2:ncol(alpha)) {
-   alpha[,i] = next_alpha( alpha[,i-1], D, N)
- } 
-
-
- round( alpha,4)
- 
- ## plot the data, true rates, and PIRLS fit
+show = function(fit, hue='red') {
  
  df_grouped = data.frame(
-                L = L,
-                U = U,
-                N = N,
-                D = D
+                L = head( fit$age_group_bounds, -1),
+                U = tail( fit$age_group_bounds, -1),
+                N = fit$N,
+                D = fit$D
                ) %>%
           mutate(logmx_obs = log(D/N))
               
  
  df_single  = data.frame(
-                  age=age+.50,
-                  std = std,
+                  age=  seq(fit$std) - .50,  # 0.5, 1.5, ...
+                  std = fit$std,
                   logmx_true = ITA_HMD_logmx,
-                  logmx_fit  = std + B %*% alpha[,6]
+                  logmx_fit  = fit$logm
                )
 
 this_plot =
   ggplot(data = df_single, aes(x=age,y=logmx_true)) +
       geom_line(aes(x=age,y=std), color='black', lwd=0.5) +
-      geom_line(aes(x=age,y=logmx_fit), color='red', lwd=3, alpha=.40) +
+      geom_line(aes(x=age,y=logmx_fit), color=hue, lwd=3, alpha=.40) +
       geom_segment(data=df_grouped,aes(x=L,xend=U,
                                        y=logmx_obs,
                                        yend=logmx_obs),
-                   color='red',lwd=1, alpha=.90) +
+                   color=hue,lwd=1, alpha=.90) +
          geom_point(size=0.60) +
       labs(x='Age',y='Log Mortality Rate',
            title='Italy Females 1980',
-           subtitle = paste(sum(D),'deaths to',round(sum(N)),'women')) +
+           subtitle = paste(sum(fit$D),'deaths to',round(sum(fit$N)),'women')) +
       scale_x_continuous(breaks=c(0,1,seq(5,100,5)),minor_breaks = NULL) +
       theme_bw()
 
   print(this_plot)
-  return(NULL)  # temporary -- will want detailed output
-}
+} # show  
 
-fit_TOPALS(bigD,bigN)
+
 
 ```
+Now fit the data and show the result.
+```{r}
+
+fit = TOPALS_fit(N,D,std,
+                 age_group_bounds = boundaries,
+                 details=TRUE)
+
+str(fit)
+
+show(fit)
+
+```
+
+
 
 In this figure the dots are the true rates from the HMD, the horizonal bars are the $\log(N_g/D_g)$ values from the grouped data, the black curve is the standard, and the red curve is the TOPALS single-year fit from PIRLS. 
 
@@ -454,13 +419,18 @@ Repeat the exercise in the last section but with simulated deaths for a much sma
 
 ```{r}
 
-for (i in 1:5) {  
+
+for (i in 1:4) {  
   ## simulate a small population    
     target_pop = 10000
-    N = bigN * target_pop/sum(bigN)
-    D = rpois(length(N), N* bigD/bigN)
+    smallN = N * target_pop/sum(N)
+    smallD = rpois(length(smallN), smallN* D/N)
     
-    fit_TOPALS(D,N)
+    this_fit = TOPALS_fit(smallN, smallD,std,
+                 age_group_bounds = boundaries,
+                 detail=TRUE)
+    
+    show(this_fit, hue='blue')
 }
 ```
 
@@ -469,13 +439,19 @@ for (i in 1:5) {
 Repeat the exercise in the last section but with simulated deaths for a much smaller population subject to the same rates.  Suppose there were only 1000 Italian women and simulate deaths:
 
 ```{r}
-for (i in 1:5) {  
+
+
+for (i in 1:4) {  
   ## simulate a small population    
     target_pop = 1000
-    N = bigN * target_pop/sum(bigN)
-    D = rpois(length(N), N* bigD/bigN)
+    smallN = N * target_pop/sum(N)
+    smallD = rpois(length(smallN), smallN* D/N)
     
-    fit_TOPALS(D,N)
+    this_fit = TOPALS_fit(smallN, smallD,std,
+                 age_group_bounds = boundaries,
+                 detail=TRUE)
+    
+    show(this_fit, hue='darkgreen')
 }
 
 ```
