@@ -265,14 +265,14 @@ $$
  \hat{\boldsymbol{X}} \:  \,
 (\boldsymbol{\alpha}^\ast - \hat{\boldsymbol{\alpha}}) 
 + \boldsymbol{P} \boldsymbol{\alpha}^\ast = 
-\hat{\boldsymbol{X}}^\prime \hat{\boldsymbol{A}} \: diag(\frac{\boldsymbol{D}_{obs} - \hat{\boldsymbol{D}}}{\boldsymbol{N}})
+\hat{\boldsymbol{X}}^\prime \hat{\boldsymbol{A}} \: diag(\frac{1}{\boldsymbol{N}}) (\boldsymbol{D}_{obs} - \hat{\boldsymbol{D}})
 $$
 and further simplified as 
 $$
 \left[ \hat{\boldsymbol{X}}^\prime \hat{\boldsymbol{A}} \:  
  \hat{\boldsymbol{X}} \:  \,
 + \boldsymbol{P} \right] \boldsymbol{\alpha}^\ast = 
-\hat{\boldsymbol{X}}^\prime \hat{\boldsymbol{A}} \: \left[ diag(\frac{\boldsymbol{D}_{obs} - \hat{\boldsymbol{D}}}{\boldsymbol{N}})  + \hat{\boldsymbol{X}} \hat{\boldsymbol{\alpha}} \right]
+\hat{\boldsymbol{X}}^\prime \hat{\boldsymbol{A}} \: \left[ diag(\frac{1}{\boldsymbol{N}}) (\boldsymbol{D}_{obs} - \hat{\boldsymbol{D}})  + \hat{\boldsymbol{X}} \hat{\boldsymbol{\alpha}} \right]
 $$
 and finally simplified to
 \begin{equation}
@@ -282,7 +282,7 @@ and finally simplified to
 + \boldsymbol{P} \right] \boldsymbol{\alpha}^\ast = 
 \hat{\boldsymbol{X}}^\prime \hat{\boldsymbol{A}} \: \hat{\boldsymbol{y}}
 \end{equation}
-where $\hat{\boldsymbol{y}} = diag(\frac{\boldsymbol{D}_{obs} - \hat{\boldsymbol{D}}}{\boldsymbol{N}})  + \hat{\boldsymbol{X}} \hat{\boldsymbol{\alpha}}$. 
+where $\hat{\boldsymbol{y}} = diag(\frac{1}{\boldsymbol{N}}) (\boldsymbol{D}_{obs} - \hat{\boldsymbol{D}})  + \hat{\boldsymbol{X}} \hat{\boldsymbol{\alpha}}$. 
 
 The solution $\boldsymbol{\alpha}^\ast$ to Eq. (\ref{eq:final-IRLS}) is also the coefficient estimate from a (penalized) weighted least squares regression of $\hat{\boldsymbol{y}}$ on $\hat{\boldsymbol{X}}$ with weights $\hat{\boldsymbol{A}}^{-1}$. 
 
