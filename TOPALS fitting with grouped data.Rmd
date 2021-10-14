@@ -1,7 +1,7 @@
 ---
 title: "Fitting a TOPALS mortality model with age-grouped data, by Penalized Iteratively Weighted Least Squares (PIRLS)"
 author: "Carl Schmertmann"
-date: "21 Aug 2019"
+date: "21 Aug 2019, updated 14 Oct 2021 (cleaned up two minor notational errors)"
 output:
   pdf_document: default
   html_document: default
@@ -214,7 +214,7 @@ $$
 -  \boldsymbol{P} \boldsymbol{\alpha} \\
 &= \boldsymbol{X}^\prime \, diag(\frac{1}{\boldsymbol{M}}) \, \boldsymbol{D}_{obs} - \boldsymbol{X}^\prime \, diag(\frac{1}{\boldsymbol{M}}) \hat{\boldsymbol{D}} 
 -  \boldsymbol{P} \boldsymbol{\alpha} \\
-&=  \boldsymbol{X}^\prime diag(\frac{\boldsymbol{D}_{obs} - \hat{\boldsymbol{D}}}{\boldsymbol{M}}) 
+&=  \boldsymbol{X}^\prime \, diag(\frac{1}{\boldsymbol{M}}) (\boldsymbol{D}_{obs} - \hat{\boldsymbol{D}}) 
 - \boldsymbol{P}\boldsymbol{\alpha} 
 \end{aligned}  
 $$
@@ -225,7 +225,7 @@ $$
 \label{eq:dQ-dalpha}
   \frac{\partial Q}{\partial\boldsymbol{\alpha}} =  \boldsymbol{X}^\prime 
 \boldsymbol{A}\:  
-  diag(\frac{ \boldsymbol{D}_{obs} - \hat{\boldsymbol{D}} }{\boldsymbol{N}}) 
+  diag(\frac{1}{\boldsymbol{N}}) (\boldsymbol{D}_{obs} - \hat{\boldsymbol{D}})  
 - \boldsymbol{P}\boldsymbol{\alpha} = \boldsymbol{0} \in \mathbb{R}^K
 \end{equation}
 
@@ -304,10 +304,14 @@ library(tidyverse, quietly = TRUE)
 library(splines, quietly = TRUE)
 ```
 
+Display the code for the _TOPALS_fit()_ function 
+```{r, code=readLines("TOPALS_fit.R")}
+```
+
 ```{r}
 
 # include the fitting function
-source('TOPALS_fit.R', echo=TRUE)
+source('TOPALS_fit.R', echo=FALSE, local = knitr::knit_global())
 
 
 ## Italian female 1980 HMD data for age groups
