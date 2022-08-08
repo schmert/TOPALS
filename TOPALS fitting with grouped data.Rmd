@@ -1,7 +1,7 @@
 ---
 title: "Fitting a TOPALS mortality model with age-grouped data, by Penalized Iteratively Weighted Least Squares (PIRLS)"
 author: "Carl Schmertmann"
-date: "21 Aug 2019, updated 14 Oct 2021 (cleaned up two minor notational errors)"
+date: "21 Aug 2019, updated 14 Oct 2021 (cleaned up two minor notational errors), re-rendered verbatim 08 Aug 2022"
 output:
   pdf_document: default
   html_document: default
